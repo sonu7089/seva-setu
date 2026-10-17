@@ -62,6 +62,11 @@
    * Blocks calendar sync until all medicines have confirmed dosage days.
 4. **"What Is This Medicine Used For?" UI Cards:**
    * Clean, reassuring patient cards showing the medicine's purpose in plain English & Hindi, food relation badge, and daily time slots.
+5. **Phase 2 Carry-Overs (Doctor Console & Pre-Visit Bay hardening):**
+   * **Fix Voice Input (priority):** Voice recording in the Pre-Visit Bay (`useSpeechRecognition`) is not working. Debug and fix it, then manually verify `hi-IN` and `en-IN` in Chrome/Edge (mic permission flow, live transcript preview, stop/restart, language switch mid-session, clear error states).
+   * **Queue Management ("Mark as Seen"):** Add a "Mark as seen / Completed" action in the Doctor Console that moves a patient out of the waiting queue (uses the existing `completed` visit status), with a way to view completed patients.
+   * **Intake Input Validation:** Validate Pre-Visit Bay fields (age range, BP format `120/80`, temp, pulse, SpO₂ 0–100%) with clear inline error messages before allowing the brief to be sent.
+   * **Responsive Doctor Console:** On narrow/mobile screens, show the queue and the selected brief as a clean list → detail flow (e.g., tapping a patient opens the brief with a back button) instead of stacking the brief below the whole queue.
 
 ---
 

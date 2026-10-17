@@ -8,6 +8,7 @@ import {
   GemmaProviderStatus,
   PreVisitInput,
   TextFollowUpQuestion,
+  TriagePriority,
 } from "@/types/sevasetu";
 
 const DEFAULT_GOOGLE_MODEL = process.env.GEMMA_MODEL || "gemma-4-26b-a4b-it";
@@ -454,6 +455,92 @@ function buildFallbackFollowUpQuestions(
   ];
 }
 
+const asStringArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === "string" && v.trim() !== "")
+    : [];
+
+/** Validates and cleans model output so the UI can always trust its shape (max 4 questions). */
+function normalizeFollowUps(raw: unknown): TextFollowUpQuestion[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (item): item is Record<string, unknown> =>
+        !!item &&
+        typeof item === "object" &&
+        typeof (item as Record<string, unknown>).questionEn === "string"
+    )
+    .slice(0, 4)
+    .map((item, idx) => ({
+      id: `fq-${idx + 1}`,
+      questionEn: String(item.questionEn),
+      questionHi:
+        typeof item.questionHi === "string" ? item.questionHi : "",
+      quickOptionsEn: asStringArray(item.quickOptionsEn).slice(0, 4),
+      quickOptionsHi: asStringArray(item.quickOptionsHi).slice(0, 4),
+    }));
+}
+
+const TRIAGE_LEVELS: TriagePriority[] = ["Routine", "Priority", "Urgent"];
+
+function normalizeDoctorBrief(
+  raw: Partial<DoctorIntakeBrief>,
+  fallbackVitals: string
+): DoctorIntakeBrief | null {
+  if (!raw || typeof raw.chiefComplaint !== "string" || !raw.chiefComplaint) {
+    return null;
+  }
+  return {
+    chiefComplaint: raw.chiefComplaint,
+    chiefComplaintHi:
+      typeof raw.chiefComplaintHi === "string" ? raw.chiefComplaintHi : undefined,
+    symptomTimeline: asStringArray(raw.symptomTimeline),
+    followUpSummary: Array.isArray(raw.followUpSummary)
+      ? raw.followUpSummary
+          .filter((f) => f && typeof f.question === "string")
+          .map((f) => ({
+            question: f.question,
+            answer: typeof f.answer === "string" ? f.answer : "Not specified",
+          }))
+      : [],
+    vitalsSummary:
+      typeof raw.vitalsSummary === "string" ? raw.vitalsSummary : fallbackVitals,
+    triagePriority: TRIAGE_LEVELS.includes(raw.triagePriority as TriagePriority)
+      ? (raw.triagePriority as TriagePriority)
+      : "Routine",
+    clinicalNotes: asStringArray(raw.clinicalNotes),
+    timeSavedNote:
+      typeof raw.timeSavedNote === "string" && raw.timeSavedNote
+        ? raw.timeSavedNote
+        : "3.5 mins of routine history captured prior to consultation",
+  };
+}
+
+/** Rough English gist of a Hindi/English complaint for the offline fallback brief. */
+function summarizeComplaintOffline(rawTranscript: string): string {
+  const t = rawTranscript.toLowerCase();
+  const found: string[] = [];
+  const rules: Array<[RegExp, string]> = [
+    [/बुखार|bukhar|fever/, "fever"],
+    [/खांसी|खाँसी|khansi|cough/, "cough"],
+    [/पेट|जलन|गैस|एसिडिटी|acidity|reflux|stomach|burning/, "abdominal pain / acid reflux"],
+    [/सिर\s?दर्द|headache/, "headache"],
+    [/सांस|साँस|breath/, "breathlessness"],
+    [/उल्टी|vomit/, "vomiting"],
+    [/दस्त|loose motion|diarr/, "loose stools"],
+    [/बदन दर्द|body ?ache|weakness|कमज़ोरी|कमजोरी/, "body ache / weakness"],
+  ];
+  for (const [re, label] of rules) {
+    if (re.test(t)) found.push(label);
+  }
+  if (found.length > 0) {
+    return `Patient reports ${found.join(", ")} (summarized from bay intake)`;
+  }
+  return rawTranscript.length > 140
+    ? `${rawTranscript.slice(0, 140)}…`
+    : rawTranscript;
+}
+
 export async function generatePreVisitFollowUps(
   input: PreVisitInput
 ): Promise<{
@@ -474,8 +561,10 @@ export async function generatePreVisitFollowUps(
 
   const completion = await runGemmaCompletion({ prompt, temperature });
   if (completion.text) {
-    const parsed = parseJsonSafely<TextFollowUpQuestion[]>(completion.text);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    const parsed = normalizeFollowUps(
+      parseJsonSafely<unknown>(completion.text)
+    );
+    if (parsed.length > 0) {
       return {
         questions: parsed,
         providerUsed: completion.providerUsed,
@@ -509,13 +598,13 @@ export async function generateDoctorIntakeBrief(
   const vitals = input.patientInfo.vitals;
   const vitalsFormatted = vitals
     ? [
-        vitals.bp ? `BP ${vitals.bp}` : null,
-        vitals.temp ? `Temp ${vitals.temp}` : null,
-        vitals.pulse ? `Pulse ${vitals.pulse}` : null,
-        vitals.spo2 ? `SpO2 ${vitals.spo2}` : null,
+        vitals.bp ? `BP ${vitals.bp} mmHg` : null,
+        vitals.temp ? `Temp ${vitals.temp}°F` : null,
+        vitals.pulse ? `Pulse ${vitals.pulse} bpm` : null,
+        vitals.spo2 ? `SpO2 ${vitals.spo2}%` : null,
       ]
         .filter(Boolean)
-        .join(" · ")
+        .join(" · ") || "Vitals not recorded"
     : "Vitals pending at bay";
 
   const { prompt, temperature, id } = renderPromptFromJson(
@@ -532,8 +621,11 @@ export async function generateDoctorIntakeBrief(
 
   const completion = await runGemmaCompletion({ prompt, temperature });
   if (completion.text) {
-    const parsed = parseJsonSafely<DoctorIntakeBrief>(completion.text);
-    if (parsed && parsed.chiefComplaint) {
+    const parsed = normalizeDoctorBrief(
+      parseJsonSafely<Partial<DoctorIntakeBrief>>(completion.text) || {},
+      vitalsFormatted
+    );
+    if (parsed) {
       return {
         brief: parsed,
         providerUsed: completion.providerUsed,
@@ -544,11 +636,9 @@ export async function generateDoctorIntakeBrief(
   }
 
   const fallbackBrief: DoctorIntakeBrief = {
-    chiefComplaint:
-      input.language === "hi"
-        ? "Acute febrile illness with dry cough (translated from Hindi bay intake)"
-        : input.rawTranscript.slice(0, 140),
-    chiefComplaintHi: input.rawTranscript.slice(0, 140),
+    chiefComplaint: summarizeComplaintOffline(input.rawTranscript),
+    chiefComplaintHi:
+      input.language === "en" ? undefined : input.rawTranscript.slice(0, 140),
     symptomTimeline: [
       `Initial intake (${input.inputMode.toUpperCase()} / ${input.language.toUpperCase()}): "${input.rawTranscript}"`,
       "Pre-visit text follow-up questions completed prior to consultation room entry.",

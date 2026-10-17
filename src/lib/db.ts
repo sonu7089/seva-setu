@@ -499,13 +499,15 @@ export interface CreateVisitParams {
 export function createVisit(params: CreateVisitParams): VisitRecord {
   const db = getDb();
   const now = new Date().toISOString();
-  const countRow = db
-    .prepare("SELECT COUNT(*) as count FROM visits")
-    .get() as { count: number };
+  // Next token = highest existing OPD number + 1 (stays unique even if rows are deleted)
+  const maxRow = db
+    .prepare(
+      "SELECT MAX(CAST(SUBSTR(token_number, 5) AS INTEGER)) as max FROM visits WHERE token_number LIKE 'OPD-%'"
+    )
+    .get() as { max: number | null };
 
   const id = params.id || `visit-${Date.now()}`;
-  const tokenNumber =
-    params.tokenNumber || `OPD-${104 + countRow.count}`;
+  const tokenNumber = params.tokenNumber || `OPD-${(maxRow.max ?? 103) + 1}`;
 
   const status: VisitStatus =
     params.status ||
