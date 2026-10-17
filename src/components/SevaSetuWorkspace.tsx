@@ -281,7 +281,7 @@ export function SevaSetuWorkspace({
                   </span>
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Loads a fresh Hindi bay intake → Doctor brief → prescription
+                  Loads a fresh Hindi waiting-area intake → Doctor brief → prescription
                   with a missing-dosage-days prompt → stale calendar events
                   ready to be replaced. Works offline, no API key needed.
                 </p>

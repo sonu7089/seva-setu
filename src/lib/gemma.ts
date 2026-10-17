@@ -542,7 +542,7 @@ function summarizeComplaintOffline(rawTranscript: string): string {
     if (re.test(t)) found.push(label);
   }
   if (found.length > 0) {
-    return `Patient reports ${found.join(", ")} (summarized from bay intake)`;
+    return `Patient reports ${found.join(", ")} (summarized from waiting-area intake)`;
   }
   return rawTranscript.length > 140
     ? `${rawTranscript.slice(0, 140)}…`
@@ -659,7 +659,7 @@ export async function generateDoctorIntakeBrief(
     triagePriority:
       vitals?.temp && parseFloat(vitals.temp) >= 101 ? "Priority" : "Routine",
     clinicalNotes: [
-      "Baseline history & medication check completed at triage bay.",
+      "Baseline history & medication check completed at waiting area.",
       "Doctor can proceed directly to focused physical exam & treatment plan.",
     ],
     timeSavedNote: "3.5 mins of routine history captured prior to consultation",

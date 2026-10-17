@@ -6,7 +6,7 @@
 ---
 
 ## Phase 1: Project Foundation, SQLite Database & Gemma 4 Engine
-**Objective:** Scaffold the Next.js application, set up automatic local SQLite persistence for Nurse Bay ↔ Doctor ↔ Patient handoffs, and wire up the multi-provider Gemma 4 client.
+**Objective:** Scaffold the Next.js application, set up automatic local SQLite persistence for Waiting Area ↔ Doctor ↔ Patient handoffs, and wire up the multi-provider Gemma 4 client.
 
 ### Deliverables:
 1. **Next.js + Tailwind CSS + TypeScript Setup:**
@@ -29,8 +29,8 @@
 **Objective:** Allow the patient or nurse at the bay to record symptoms via Voice or Text in Hindi or English, complete text-only follow-up questions, and save the structured brief to SQLite for the doctor.
 
 ### Deliverables:
-1. **Patient / Nurse Bay Intake Form (`src/components/PreVisitBay.tsx`):**
-   * **Role Toggle:** *Nurse at Triage Bay* (includes quick Vitals entry: BP, Temp, Pulse, SpO2) vs. *Patient Self-Check-In*.
+1. **Patient / Nurse Waiting-Area Intake Form (`src/components/PreVisitBay.tsx`):**
+   * **Role Toggle:** *Nurse at Waiting Area* (includes quick Vitals entry: BP, Temp, Pulse, SpO2) vs. *Patient Self-Check-In*.
    * **Language Selector:** **Hindi (`hi-IN`)** and **English (`en-IN`)**.
    * **Dual Input Mode:**
      * **Voice Input:** Live microphone recording using Web Speech API (`hi-IN` / `en-IN`) with real-time transcript preview.

@@ -160,7 +160,7 @@ function seedInitialDataIfEmpty(db: Database.Database): void {
     chiefComplaintHi:
       "3 दिन से तेज़ बुखार और सूखी खांसी, रात में अधिक तकलीफ़।",
     symptomTimeline: [
-      "Day 1–3: Evening spikes of fever (recorded 101.4°F at triage bay) with chills and myalgia.",
+      "Day 1–3: Evening spikes of fever (recorded 101.4°F at waiting area) with chills and myalgia.",
       "Dry, non-productive cough worse on lying down at night; no hemoptysis or dyspnea.",
       "Self-medicated with Tab Paracetamol 500mg once; fever recurred after 4 hours.",
     ],
@@ -181,7 +181,7 @@ function seedInitialDataIfEmpty(db: Database.Database): void {
     vitalsSummary: "BP 124/80 mmHg · Temp 101.4°F · Pulse 96 bpm · SpO2 98%",
     triagePriority: "Priority",
     clinicalNotes: [
-      "Routine history completed at Nurse Bay in Hindi (Voice).",
+      "Routine history completed at Waiting Area in Hindi (Voice).",
       "Examine throat/chest auscultation directly; consider viral febrile panel if persistent >4 days.",
     ],
     timeSavedNote: "3.5 mins of routine history captured prior to consultation",

@@ -11,7 +11,7 @@ interface BriefRequestBody extends Partial<PreVisitInput> {
 }
 
 /**
- * Compiles the bay intake + follow-up answers into a 15-second doctor brief
+ * Compiles the waiting-area intake + follow-up answers into a 15-second doctor brief
  * and persists the visit to SQLite so it appears in the Doctor Console queue.
  */
 export async function POST(request: NextRequest) {

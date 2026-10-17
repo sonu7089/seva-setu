@@ -13,14 +13,14 @@
 ### The Problem
 1. **Before the Consultation (Inefficient Intake):**
    * In busy clinics and hospitals, doctors spend the majority of a 5-minute consultation asking generic, repetitive baseline questions (*"Since how many days?", "Is the fever continuous?", "What medicines did you take?"*) that do not require a doctor's specialized medical judgment.
-   * Language barriers between Hindi-speaking patients and English medical records slow down nurse bay triage even further.
+   * Language barriers between Hindi-speaking patients and English medical records slow down triage at the waiting area even further.
 2. **After the Consultation (Prescription Confusion & Missed Doses):**
    * Patients leave with physical prescriptions containing medical abbreviations (`OD`, `BD`, `TDS`, `HS`, `PC`, `AC`) and unfamiliar drug names.
    * Patients often don't know **what each medicine is actually used for**, forget to take doses on time, or keep getting reminders from an older prescription after their doctor changes their treatment.
 
 ### The Value We Add
 * **For Doctors:** Saves 3–4 minutes per consultation by offloading generic, structured history-taking to an AI-guided pre-visit intake—handing the doctor a ready-to-scan clinical brief for faster decision-making.
-* **For Nurses & Triage Bays:** Allows nurses at the bay (or patients directly) to record symptoms rapidly via **Voice or Text in Hindi or English**, followed by targeted **text-only follow-up questions**.
+* **For Nurses & Waiting Areas:** Allows nurses at the waiting area (or patients directly) to record symptoms rapidly via **Voice or Text in Hindi or English**, followed by targeted **text-only follow-up questions**.
 * **For Patients:** Eliminates manual typing after the visit by **scanning the prescription**, clearly explains **what every medicine is used for** in the UI, asks for **dosage days manually if missing**, and syncs a **smart Google Calendar schedule** that automatically removes outdated medicine events when a new prescription is added.
 
 ---
@@ -42,7 +42,7 @@
 ### Workflow 1: Before Your Visit — Bilingual Bay Intake & Text Follow-Ups
 
 #### 1.1 Dual-Modality Input (Voice or Text | Hindi or English)
-* **Who Uses It:** Either the **patient** (via kiosk/phone in waiting area) or the **nurse at the clinical triage bay**.
+* **Who Uses It:** Either the **patient** (via kiosk/phone in waiting area) or the **nurse at the clinical waiting area**.
 * **Input Modes:**
   1. **Voice Input (`hi-IN` & `en-IN` / `en-US`):** Uses browser speech recognition / audio capture so patients or nurses can speak naturally in **Hindi**, **English**, or mixed **Hinglish** (e.g., *"पेशेंट को तीन दिन से तेज़ बुखार और सूखी खांसी है, रात को ज़्यादा होती है"* or *"Patient has high fever and dry cough for 3 days, worse at night"*).
   2. **Text Input:** Direct typing in Hindi or English, plus optional vital signs input by the nurse at the bay (BP, Temperature, SpO2, Pulse, Weight).
@@ -56,7 +56,7 @@
 * Once follow-ups are answered, Gemma 4 generates a concise **Pre-Visit Clinical Brief** for the doctor:
   * **Chief Complaint & Timeline** (normalized into clear clinical English, with original Hindi/English transcript preserved).
   * **Bay Vitals & Key History Answers** (positives & negatives from the text follow-ups).
-  * **Red Flag / Triage Priority Indicator** for the nurse bay (`Routine`, `Priority`, `Urgent`).
+  * **Red Flag / Triage Priority Indicator** for the waiting area (`Routine`, `Priority`, `Urgent`).
 
 ---
 
@@ -213,4 +213,4 @@ To make the repository welcoming for fellow Hacktoberfest contributors:
 1. **`src/community-packs/intake-templates/`:** Add generic pre-visit question sets for common complaints (Fever, Cough/Cold, Stomach Pain, Joint Pain, Headache, Skin Rash) in English & Hindi.
 2. **`src/community-packs/medicine-knowledge/`:** Contribute plain-language *"What is this medicine used for?"* descriptions in Hindi, English, and other Indian languages.
 3. **`src/community-packs/sample-prescriptions/`:** Add anonymized sample prescriptions for testing OCR/Vision extraction and missing-dosage-days edge cases.
-4. **Calendar & Accessibility Enhancements:** Improve Google Calendar event formatting, voice recognition accuracy for Hindi medical terms, and nurse bay keyboard shortcuts.
+4. **Calendar & Accessibility Enhancements:** Improve Google Calendar event formatting, voice recognition accuracy for Hindi medical terms, and waiting-area keyboard shortcuts.

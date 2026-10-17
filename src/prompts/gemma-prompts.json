@@ -12,7 +12,7 @@
   "prompts": {
     "preVisitFollowUps": {
       "id": "previsit_followups_v1",
-      "purpose": "Analyzes initial Hindi/English patient or nurse bay transcript and generates 3 to 4 targeted, non-diagnostic text follow-up questions to save doctor consultation time.",
+      "purpose": "Analyzes initial Hindi/English patient or waiting-area transcript and generates 3 to 4 targeted, non-diagnostic text follow-up questions to save doctor consultation time.",
       "temperature": 0.2,
       "systemInstruction": "You are a clinical triage assistant at an Indian outpatient clinic (SevaSetu).",
       "template": [
@@ -38,7 +38,7 @@
     },
     "doctorIntakeBrief": {
       "id": "doctor_soap_brief_v1",
-      "purpose": "Compiles the initial Hindi/English symptom transcript, nurse bay vitals, and text follow-up answers into a 15-second pre-visit clinical brief for the doctor.",
+      "purpose": "Compiles the initial Hindi/English symptom transcript, waiting-area vitals, and text follow-up answers into a 15-second pre-visit clinical brief for the doctor.",
       "temperature": 0.2,
       "systemInstruction": "You are a clinical scribe generating a 15-second pre-visit decision-support brief for a doctor in an Indian OPD.",
       "template": [

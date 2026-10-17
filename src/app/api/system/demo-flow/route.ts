@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
  * presenter can always start clean, even after the pre-seeded data has
  * already been consumed:
  *
- *   Hindi bay intake (voice) → answered text follow-ups → 15-second Doctor
+ *   Hindi waiting-area intake (voice) → answered text follow-ups → 15-second Doctor
  *   SOAP brief → prescription with one missing-dosage-days medicine (shows the
  *   amber prompt) → 2 stale "previous Rx" calendar events waiting to be
  *   auto-replaced on the next calendar sync.
@@ -94,7 +94,7 @@ export async function POST() {
       chiefComplaintHi:
         "3 दिन से तेज़ बुखार और सूखी खांसी, रात में अधिक तकलीफ़।",
       symptomTimeline: [
-        "Day 1–3: Evening spikes of fever (recorded 101.2°F at triage bay) with chills and body ache.",
+        "Day 1–3: Evening spikes of fever (recorded 101.2°F at waiting area) with chills and body ache.",
         "Dry, non-productive cough worse on lying down at night; no breathing difficulty.",
         "Self-medicated with Tab Paracetamol 500mg once; fever recurred after 4 hours.",
       ],
@@ -105,7 +105,7 @@ export async function POST() {
       vitalsSummary: "BP 122/80 mmHg · Temp 101.2°F · Pulse 94 bpm · SpO2 98%",
       triagePriority: "Priority",
       clinicalNotes: [
-        `Routine history completed at Nurse Bay in Hindi (Voice) for the live demo${complaint ? ` using the "${complaint.labelEn}" community template` : ""}.`,
+        `Routine history completed at Waiting Area in Hindi (Voice) for the live demo${complaint ? ` using the "${complaint.labelEn}" community template` : ""}.`,
         "Examine throat/chest auscultation directly; consider viral febrile panel if persistent >4 days.",
       ],
       timeSavedNote: "3.5 mins of routine history captured prior to consultation",
@@ -221,7 +221,7 @@ export async function POST() {
       prescription,
       staleEventsSeeded: staleEvents.length,
       steps: [
-        "Hindi bay intake saved with vitals + transcript",
+        "Hindi waiting-area intake saved with vitals + transcript",
         "Text follow-ups answered; Doctor SOAP brief ready",
         "Prescription loaded with 1 missing-dosage-days prompt",
         "2 stale previous-Rx events staged for auto-replacement",

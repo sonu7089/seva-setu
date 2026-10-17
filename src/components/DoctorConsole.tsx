@@ -382,7 +382,7 @@ function BriefCard({
                 ) : (
                   <Type className="h-3 w-3" />
                 )}
-                {visit.entryBy === "nurse_bay" ? "Nurse bay" : "Self check-in"}
+                {visit.entryBy === "nurse_bay" ? "Waiting area" : "Self check-in"}
               </span>
             </div>
             <CardTitle className="mt-1.5 text-xl">{visit.patientName}</CardTitle>
@@ -438,7 +438,7 @@ function BriefCard({
         </Section>
 
         {history.length > 0 && (
-          <Section title="History from the bay">
+          <Section title="History from the waiting area">
             <dl className="divide-y rounded-md border">
               {history.map((item, idx) => (
                 <div

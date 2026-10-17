@@ -270,7 +270,7 @@ export function PreVisitBay({
           aria-label="Who is filling this form"
           className="shrink-0"
         >
-          <ToggleGroupItem value="nurse_bay">Nurse at triage</ToggleGroupItem>
+          <ToggleGroupItem value="nurse_bay">Nurse at waiting area</ToggleGroupItem>
           <ToggleGroupItem value="patient">Patient check-in</ToggleGroupItem>
         </ToggleGroup>
       </div>
@@ -291,7 +291,7 @@ export function PreVisitBay({
               <CardTitle className="text-base">Patient details</CardTitle>
               <CardDescription>
                 {entryBy === "nurse_bay"
-                  ? "Basic details and vitals taken at the bay."
+                  ? "Basic details and vitals taken at the waiting area."
                   : "Tell us a little about yourself."}
               </CardDescription>
             </CardHeader>

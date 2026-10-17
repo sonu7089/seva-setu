@@ -14,7 +14,7 @@ Built for **Hacktoberfest 2026** · Powered by **Gemma 4** (text, bilingual Hind
 ### 1. Before Your Visit — bilingual bay intake (Patient or Nurse)
 
 - **Dual-mode intake:** speak (voice via Web Speech API, `hi-IN` / `en-IN`) or type symptoms — in Hindi, English, or mixed Hinglish
-- **Flexible entry:** patient self-check-in *or* nurse-run triage bay (with vitals: BP, temperature, SpO2, pulse)
+- **Flexible entry:** patient self-check-in *or* nurse-run waiting area (with vitals: BP, temperature, SpO2, pulse)
 - **3–4 smart text follow-up questions** as quick-tap chips (onset, duration, severity, triggers, allergies, existing conditions) — the generic questions the doctor won't have to ask
 - **15-second Doctor decision-support brief:** chief complaint + timeline (normalized clinical English, original transcript preserved), vitals + follow-up answers, red-flag triage priority (`Routine` / `Priority` / `Urgent`)
 - **Live patient queue** on the Doctor Console — open any brief before the patient walks in, mark patients as seen
