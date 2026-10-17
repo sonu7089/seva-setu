@@ -4,7 +4,7 @@
 > **Project Name:** **SevaSetu (सेवासेतु)** — *Sevā* (Compassionate Care/Service) + *Setu* (Bridge)  
 > **Core Value Proposition:** *Save doctor & patient time before the visit with bilingual (Hindi/English) voice-or-text clinical intake, and turn scanned prescriptions after the visit into clear medicine guides and automated Google Calendar schedules.*  
 > **AI Engine:** Gemma 4 API (Bilingual NLU, Clinical Follow-Up Generation & Prescription Vision/OCR)  
-> **Stack:** Next.js (App Router), TypeScript, Tailwind CSS, Web Speech API, Google Calendar API
+> **Stack:** Next.js (App Router), TypeScript, Tailwind CSS, SQLite (`better-sqlite3`), Web Speech API, Google Calendar API
 
 ---
 
