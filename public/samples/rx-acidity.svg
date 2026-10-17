@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1100" viewBox="0 0 900 1100">
+  <rect width="900" height="1100" fill="#fbfdff"/>
+  <rect x="24" y="24" width="852" height="1052" fill="none" stroke="#1d4ed8" stroke-width="3"/>
+
+  <!-- Letterhead -->
+  <text x="450" y="95" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="38" font-weight="bold" fill="#1d4ed8">SevaSetu Community Polyclinic</text>
+  <text x="450" y="130" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#334155">Dr. Meera Iyer, MBBS, MD</text>
+  <text x="450" y="158" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#64748b">Reg. No. KMC-31207  |  OPD: Mon-Sat, 4 PM - 8 PM</text>
+  <line x1="60" y1="182" x2="840" y2="182" stroke="#1d4ed8" stroke-width="2"/>
+
+  <!-- Patient line -->
+  <g font-family="'Bradley Hand', 'Segoe Print', 'Comic Sans MS', cursive" font-size="26" fill="#14532d">
+    <text x="64" y="232">Name: Vikram Nair</text>
+    <text x="430" y="232">Age/Sex: 38 / M</text>
+    <text x="640" y="232">Date: 16/10/2026</text>
+  </g>
+  <line x1="60" y1="244" x2="840" y2="244" stroke="#cbd5e1" stroke-width="1.5"/>
+
+  <text x="64" y="330" font-family="Georgia, serif" font-size="76" font-style="italic" fill="#1d4ed8">Rx</text>
+
+  <!-- Medicines -->
+  <g font-family="'Bradley Hand', 'Segoe Print', 'Comic Sans MS', cursive" font-size="30" fill="#14532d">
+    <text x="64" y="420">1)  Tab. Pantoprazole 40 mg</text>
+    <text x="110" y="462" font-size="26">OD  (before breakfast)   x  14 days</text>
+
+    <text x="64" y="552">2)  Tab. Domperidone 10 mg</text>
+    <text x="110" y="594" font-size="26">BD  (before food)   x  5 days</text>
+
+    <text x="64" y="684">3)  Syp. Antacid Gel</text>
+    <text x="110" y="726" font-size="26">10 ml  TDS  (after food)   x  5 days</text>
+  </g>
+
+  <g font-family="'Bradley Hand', 'Segoe Print', 'Comic Sans MS', cursive" font-size="26" fill="#14532d">
+    <text x="64" y="830">Advice: Avoid spicy / oily food, no late dinner.</text>
+    <text x="64" y="872">Review after 2 weeks.</text>
+  </g>
+
+  <!-- Signature -->
+  <path d="M600 975 C 630 935, 660 1005, 695 955 S 750 945, 790 980" fill="none" stroke="#14532d" stroke-width="3" stroke-linecap="round"/>
+  <line x1="580" y1="1000" x2="820" y2="1000" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="700" y="1026" text-anchor="middle" font-family="Georgia, serif" font-size="15" fill="#64748b">Signature</text>
+</svg>

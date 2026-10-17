@@ -1,7 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { Clock, Inbox, Mic, RefreshCw, Type } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCheck,
+  CheckCircle2,
+  Clock,
+  Inbox,
+  Mic,
+  RefreshCw,
+  Undo2,
+  Type,
+} from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +25,9 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-import { TriagePriority, VisitRecord } from "@/types/sevasetu";
+import { TriagePriority, VisitRecord, VisitStatus } from "@/types/sevasetu";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -57,15 +70,24 @@ interface DoctorConsoleProps {
   selectedVisitId: string;
   onSelectVisit: (id: string) => void;
   onRefresh: () => Promise<void>;
+  onUpdateVisitStatus: (id: string, status: VisitStatus) => Promise<void>;
 }
+
+type QueueView = "waiting" | "completed";
 
 export function DoctorConsole({
   visits,
   selectedVisitId,
   onSelectVisit,
   onRefresh,
+  onUpdateVisitStatus,
 }: DoctorConsoleProps) {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [view, setView] = React.useState<QueueView>("waiting");
+  // On narrow screens the queue and the brief are separate screens (list -> detail).
+  const [mobilePane, setMobilePane] = React.useState<"list" | "detail">("list");
+  const [updatingId, setUpdatingId] = React.useState<string | null>(null);
+  const [actionError, setActionError] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(async () => {
     setIsRefreshing(true);
@@ -82,18 +104,57 @@ export function DoctorConsole({
     return () => clearInterval(timer);
   }, [refresh]);
 
-  const queue = React.useMemo(
+  const waiting = React.useMemo(
     () =>
-      [...visits].sort(
-        (a, b) =>
-          PRIORITY_RANK[getPriority(a)] - PRIORITY_RANK[getPriority(b)] ||
-          a.createdAt.localeCompare(b.createdAt)
-      ),
+      visits
+        .filter((v) => v.status !== "completed")
+        .sort(
+          (a, b) =>
+            PRIORITY_RANK[getPriority(a)] - PRIORITY_RANK[getPriority(b)] ||
+            a.createdAt.localeCompare(b.createdAt)
+        ),
+    [visits]
+  );
+  const completed = React.useMemo(
+    () =>
+      visits
+        .filter((v) => v.status === "completed")
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     [visits]
   );
 
-  const selected =
-    queue.find((v) => v.id === selectedVisitId) ?? queue[0] ?? null;
+  const list = view === "waiting" ? waiting : completed;
+  const selected = list.find((v) => v.id === selectedVisitId) ?? list[0] ?? null;
+
+  function openVisit(id: string) {
+    onSelectVisit(id);
+    setMobilePane("detail");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function changeView(next: QueueView) {
+    setView(next);
+    setMobilePane("list");
+    setActionError(null);
+  }
+
+  async function changeStatus(visit: VisitRecord, status: VisitStatus) {
+    setUpdatingId(visit.id);
+    setActionError(null);
+    try {
+      await onUpdateVisitStatus(visit.id, status);
+      // Hand the doctor the next patient in the list they were working through.
+      const remaining = list.filter((v) => v.id !== visit.id);
+      if (remaining[0]) onSelectVisit(remaining[0].id);
+      setMobilePane("list");
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Could not update this patient."
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -112,7 +173,7 @@ export function DoctorConsole({
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5 tabular-nums">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            {queue.length} in queue
+            {waiting.length} in queue
           </Badge>
           <Button
             variant="outline"
@@ -126,35 +187,84 @@ export function DoctorConsole({
         </div>
       </div>
 
-      {queue.length === 0 || !selected ? (
+      <ToggleGroup
+        type="single"
+        value={view}
+        onValueChange={(v) => v && changeView(v as QueueView)}
+        aria-label="Queue view"
+      >
+        <ToggleGroupItem value="waiting" className="tabular-nums">
+          Waiting ({waiting.length})
+        </ToggleGroupItem>
+        <ToggleGroupItem value="completed" className="tabular-nums">
+          Completed ({completed.length})
+        </ToggleGroupItem>
+      </ToggleGroup>
+
+      {actionError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Couldn&apos;t update the queue</AlertTitle>
+          <AlertDescription>{actionError}</AlertDescription>
+        </Alert>
+      )}
+
+      {list.length === 0 || !selected ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-            <Inbox className="h-8 w-8 text-muted-foreground" />
-            <p className="font-medium">No patients waiting</p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Patients appear here as soon as the nurse or patient sends a
-              brief from the Pre-Visit Bay.
-            </p>
+            {view === "waiting" ? (
+              <>
+                <Inbox className="h-8 w-8 text-muted-foreground" />
+                <p className="font-medium">
+                  {completed.length > 0 ? "Queue cleared" : "No patients waiting"}
+                </p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  {completed.length > 0
+                    ? "Everyone has been seen. New briefs from the Pre-Visit Bay will appear here."
+                    : "Patients appear here as soon as the nurse or patient sends a brief from the Pre-Visit Bay."}
+                </p>
+              </>
+            ) : (
+              <>
+                <CheckCheck className="h-8 w-8 text-muted-foreground" />
+                <p className="font-medium">No completed patients yet</p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Patients you mark as seen move here, so you can look them up
+                  again.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid items-start gap-6 lg:grid-cols-12">
           {/* Queue */}
-          <Card className="lg:col-span-4">
+          <Card
+            className={cn(
+              "lg:col-span-4",
+              mobilePane === "detail" && "hidden lg:block"
+            )}
+          >
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Waiting queue</CardTitle>
-              <CardDescription>Urgent cases first, then by arrival.</CardDescription>
+              <CardTitle className="text-base">
+                {view === "waiting" ? "Waiting queue" : "Completed"}
+              </CardTitle>
+              <CardDescription>
+                {view === "waiting"
+                  ? "Urgent cases first, then by arrival."
+                  : "Most recently seen first."}
+              </CardDescription>
             </CardHeader>
             <ScrollArea className="max-h-[560px]">
               <ul className="space-y-1 px-3 pb-3">
-                {queue.map((visit) => {
+                {list.map((visit) => {
                   const priority = getPriority(visit);
                   const isSelected = visit.id === selected.id;
                   return (
                     <li key={visit.id}>
                       <button
                         type="button"
-                        onClick={() => onSelectVisit(visit.id)}
+                        onClick={() => openVisit(visit.id)}
                         aria-current={isSelected ? "true" : undefined}
                         className={cn(
                           "w-full rounded-md border border-transparent p-3 text-left transition-colors hover:bg-accent/60",
@@ -165,16 +275,22 @@ export function DoctorConsole({
                           <span className="font-mono text-xs font-semibold text-primary">
                             {visit.tokenNumber}
                           </span>
-                          <Badge variant={PRIORITY_BADGE[priority]}>
-                            {priority}
-                          </Badge>
+                          {view === "completed" ? (
+                            <Badge variant="success">Seen</Badge>
+                          ) : (
+                            <Badge variant={PRIORITY_BADGE[priority]}>
+                              {priority}
+                            </Badge>
+                          )}
                         </div>
                         <p className="mt-1.5 truncate text-sm font-medium">
                           {visit.patientName}
                         </p>
                         <p className="text-xs text-muted-foreground tabular-nums">
                           {visit.age} yrs · {visit.gender} ·{" "}
-                          {timeAgo(visit.createdAt)}
+                          {view === "completed"
+                            ? `seen ${timeAgo(visit.updatedAt)}`
+                            : timeAgo(visit.createdAt)}
                         </p>
                         <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">
                           {visit.doctorBrief?.chiefComplaint ||
@@ -189,8 +305,27 @@ export function DoctorConsole({
           </Card>
 
           {/* Brief */}
-          <div className="lg:col-span-8">
-            <BriefCard visit={selected} />
+          <div
+            className={cn(
+              "space-y-3 lg:col-span-8",
+              mobilePane === "list" && "hidden lg:block"
+            )}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-2 lg:hidden"
+              onClick={() => setMobilePane("list")}
+            >
+              <ArrowLeft />
+              Back to {view === "waiting" ? "queue" : "completed"}
+            </Button>
+            <BriefCard
+              visit={selected}
+              busy={updatingId === selected.id}
+              onMarkSeen={() => changeStatus(selected, "completed")}
+              onReopen={() => changeStatus(selected, "ready_for_doctor")}
+            />
           </div>
         </div>
       )}
@@ -198,7 +333,18 @@ export function DoctorConsole({
   );
 }
 
-function BriefCard({ visit }: { visit: VisitRecord }) {
+function BriefCard({
+  visit,
+  busy,
+  onMarkSeen,
+  onReopen,
+}: {
+  visit: VisitRecord;
+  busy: boolean;
+  onMarkSeen: () => void;
+  onReopen: () => void;
+}) {
+  const isCompleted = visit.status === "completed";
   const brief = visit.doctorBrief;
   const priority = getPriority(visit);
 
@@ -241,7 +387,32 @@ function BriefCard({ visit }: { visit: VisitRecord }) {
             </div>
             <CardTitle className="mt-1.5 text-xl">{visit.patientName}</CardTitle>
           </div>
-          <Badge variant={PRIORITY_BADGE[priority]}>{priority}</Badge>
+          <div className="flex flex-col items-end gap-2">
+            {isCompleted ? (
+              <Badge variant="success" className="gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                Seen
+              </Badge>
+            ) : (
+              <Badge variant={PRIORITY_BADGE[priority]}>{priority}</Badge>
+            )}
+            {isCompleted ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onReopen}
+                disabled={busy}
+              >
+                <Undo2 />
+                {busy ? "Updating…" : "Move back to queue"}
+              </Button>
+            ) : (
+              <Button size="sm" onClick={onMarkSeen} disabled={busy}>
+                <CheckCircle2 />
+                {busy ? "Updating…" : "Mark as seen"}
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

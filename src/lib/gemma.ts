@@ -1,6 +1,11 @@
 import fs from "fs";
 import path from "path";
 import promptCatalogJson from "@/prompts/gemma-prompts.json";
+import { isPurposeUnknown, normalizeMedications } from "@/lib/prescription-utils";
+import {
+  getSamplePrescription,
+  SAMPLE_PRESCRIPTIONS,
+} from "@/lib/sample-prescriptions";
 import {
   DoctorIntakeBrief,
   ExtractedMedication,
@@ -33,6 +38,7 @@ export interface GemmaPromptCatalog {
     preVisitFollowUps: PromptTemplateEntry;
     doctorIntakeBrief: PromptTemplateEntry;
     prescriptionVisionParser: PromptTemplateEntry;
+    medicinePurposeExplainer: PromptTemplateEntry;
   };
 }
 
@@ -156,6 +162,7 @@ interface GemmaCompletionOptions {
   imageBase64?: string;
   mimeType?: string;
   temperature?: number;
+  maxOutputTokens?: number;
 }
 
 async function callGoogleAiStudio(
@@ -191,7 +198,7 @@ async function callGoogleAiStudio(
       const isGemma4 = model.startsWith("gemma-4");
       const generationConfig: Record<string, unknown> = {
         temperature: options.temperature ?? 0.2,
-        maxOutputTokens: 2048,
+        maxOutputTokens: options.maxOutputTokens ?? 2048,
       };
       if (isGemma4) {
         generationConfig.thinkingConfig = { thinkingLevel: "MINIMAL" };
@@ -278,6 +285,7 @@ async function callOllamaEndpoint(
         model: DEFAULT_OLLAMA_MODEL,
         messages: [{ role: "user", content }],
         temperature: options.temperature ?? 0.2,
+        max_tokens: options.maxOutputTokens,
       }),
     });
 
@@ -665,18 +673,28 @@ export async function generateDoctorIntakeBrief(
   };
 }
 
+export interface PrescriptionParseResult {
+  medications: ExtractedMedication[];
+  doctorName: string;
+  clinicName: string;
+  patientName?: string;
+  providerUsed: GemmaProviderMode;
+  modelName: string;
+  promptId: string;
+  /** True when no model answered and offline demo data was returned instead. */
+  usedFallback: boolean;
+}
+
+const DEFAULT_DOCTOR = "Dr. Arvind Kulkarni (MD, Internal Medicine)";
+const DEFAULT_CLINIC = "SevaSetu Community Polyclinic";
+
 export async function parsePrescriptionWithVision(params: {
   imageBase64?: string;
   mimeType?: string;
   rawTextHint?: string;
-}): Promise<{
-  medications: ExtractedMedication[];
-  doctorName: string;
-  clinicName: string;
-  providerUsed: GemmaProviderMode;
-  modelName: string;
-  promptId: string;
-}> {
+  /** Pre-loaded sample used for the offline fallback so demos stay faithful. */
+  sampleId?: string;
+}): Promise<PrescriptionParseResult> {
   const { prompt, temperature, id } = renderPromptFromJson(
     "prescriptionVisionParser",
     {
@@ -692,84 +710,105 @@ export async function parsePrescriptionWithVision(params: {
       imageBase64: params.imageBase64,
       mimeType: params.mimeType,
       temperature,
+      maxOutputTokens: 4096,
     });
 
     if (completion.text) {
-      const parsed = parseJsonSafely<{
-        doctorName?: string;
-        clinicName?: string;
-        medications?: ExtractedMedication[];
-      }>(completion.text);
+      const parsed = parseJsonSafely<
+        | { doctorName?: string; clinicName?: string; medications?: unknown }
+        | unknown[]
+      >(completion.text);
 
-      if (parsed?.medications && Array.isArray(parsed.medications)) {
+      const medsRaw = Array.isArray(parsed)
+        ? parsed
+        : (parsed as { medications?: unknown } | null)?.medications;
+      const medications = normalizeMedications(medsRaw);
+
+      if (medications.length > 0) {
+        const meta = Array.isArray(parsed)
+          ? {}
+          : (parsed as { doctorName?: string; clinicName?: string });
         return {
-          medications: parsed.medications,
+          medications,
           doctorName:
-            parsed.doctorName || "Dr. Arvind Kulkarni (MD, Internal Medicine)",
-          clinicName: parsed.clinicName || "SevaSetu Community Polyclinic",
+            typeof meta.doctorName === "string" && meta.doctorName.trim()
+              ? meta.doctorName.trim()
+              : DEFAULT_DOCTOR,
+          clinicName:
+            typeof meta.clinicName === "string" && meta.clinicName.trim()
+              ? meta.clinicName.trim()
+              : DEFAULT_CLINIC,
           providerUsed: completion.providerUsed,
           modelName: completion.modelName,
           promptId: id,
+          usedFallback: false,
         };
       }
     }
   }
 
+  // Offline / unreadable: return the matching sample, or the first sample as a generic demo.
+  const sample = getSamplePrescription(params.sampleId) ?? SAMPLE_PRESCRIPTIONS[0];
   return {
-    doctorName: "Dr. Arvind Kulkarni (MD, Internal Medicine)",
-    clinicName: "SevaSetu Community Polyclinic",
+    medications: normalizeMedications(sample.medications),
+    doctorName: sample.doctorName,
+    clinicName: sample.clinicName,
+    patientName: params.sampleId ? sample.patientName : undefined,
     providerUsed: "demo_fallback",
     modelName: "gemma-4-27b-it (Resilient Local Fallback)",
     promptId: id,
-    medications: [
-      {
-        id: "med-rx-1",
-        name: "Tab Pantoprazole",
-        dosage: "40 mg",
-        frequencyCode: "OD",
-        frequencyPlain: "Once daily (Morning, 30 mins before breakfast)",
-        foodRelation: "before_food",
-        whatIsItUsedForEn:
-          "Reduces stomach acid and prevents acidity or gastric irritation.",
-        whatIsItUsedForHi:
-          "पेट में एसिड और जलन को कम करता है तथा पेट की परत को सुरक्षित रखता है।",
-        precautionNote: "Take on an empty stomach with a full glass of water.",
-        daysOfDosage: 5,
-        isDaysConfirmed: true,
-        recommendedTimes: ["07:30"],
-      },
-      {
-        id: "med-rx-2",
-        name: "Tab Paracetamol (Dolo)",
-        dosage: "650 mg",
-        frequencyCode: "TDS",
-        frequencyPlain: "Three times daily (Morning, Afternoon, Night)",
-        foodRelation: "after_food",
-        whatIsItUsedForEn:
-          "Reduces fever and relieves body ache and headache.",
-        whatIsItUsedForHi:
-          "बुखार कम करने और बदन दर्द व सिरदर्द से राहत के लिए।",
-        precautionNote: "Keep at least a 6-hour interval between doses.",
-        daysOfDosage: 3,
-        isDaysConfirmed: true,
-        recommendedTimes: ["09:00", "14:00", "21:30"],
-      },
-      {
-        id: "med-rx-3",
-        name: "Syp Dextromethorphan + CPM",
-        dosage: "10 ml",
-        frequencyCode: "BD",
-        frequencyPlain: "Twice daily (Morning & Bedtime)",
-        foodRelation: "after_food",
-        whatIsItUsedForEn:
-          "Suppresses dry cough and relieves throat irritation at night.",
-        whatIsItUsedForHi:
-          "सूखी खांसी और गले की खराश को शांत करने के लिए।",
-        precautionNote: "Shake well before use; may cause mild drowsiness.",
-        daysOfDosage: null,
-        isDaysConfirmed: false,
-        recommendedTimes: ["09:00", "21:30"],
-      },
-    ],
+    usedFallback: true,
   };
+}
+
+/**
+ * Fills in plain-language purposes for medicines that are neither in the built-in
+ * dictionary nor explained by the user (typically manual entry). Falls back silently
+ * to the "ask your doctor" placeholder when no model is available.
+ */
+export async function explainUnknownMedicines(
+  medications: ExtractedMedication[]
+): Promise<ExtractedMedication[]> {
+  const unknownIdx = medications
+    .map((m, i) => (isPurposeUnknown(m) ? i : -1))
+    .filter((i) => i >= 0);
+  if (unknownIdx.length === 0) return medications;
+
+  const status = getGemmaProviderStatus();
+  if (!status.googleApiKeyConfigured && !status.ollamaEndpointConfigured) {
+    return medications;
+  }
+
+  const { prompt, temperature } = renderPromptFromJson(
+    "medicinePurposeExplainer",
+    {
+      medicineList: unknownIdx
+        .map((i) => `- ${medications[i].name} ${medications[i].dosage}`.trim())
+        .join("\n"),
+    }
+  );
+  const completion = await runGemmaCompletion({ prompt, temperature });
+  if (!completion.text) return medications;
+
+  const parsed = parseJsonSafely<Array<Record<string, unknown>>>(
+    completion.text
+  );
+  if (!Array.isArray(parsed)) return medications;
+
+  const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const result = [...medications];
+  unknownIdx.forEach((medIndex, k) => {
+    const item = parsed[k];
+    if (!item) return;
+    const en = text(item.whatIsItUsedForEn);
+    const hi = text(item.whatIsItUsedForHi);
+    if (!en || !hi) return;
+    result[medIndex] = {
+      ...result[medIndex],
+      whatIsItUsedForEn: en,
+      whatIsItUsedForHi: hi,
+      precautionNote: result[medIndex].precautionNote || text(item.precautionNote),
+    };
+  });
+  return result;
 }

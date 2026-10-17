@@ -1,37 +1,24 @@
 "use client";
 
 import * as React from "react";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { DoctorConsole } from "@/components/DoctorConsole";
 import { Navbar } from "@/components/Navbar";
+import { PostVisitWorkspace } from "@/components/PostVisitWorkspace";
 import { PreVisitBay } from "@/components/PreVisitBay";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import type { DatabaseDiagnostics } from "@/lib/db";
 import {
   CalendarEventRecord,
   GemmaProviderStatus,
   PrescriptionRecord,
   VisitRecord,
+  VisitStatus,
   WorkspaceTab,
 } from "@/types/sevasetu";
+import { countMissingDays } from "@/lib/prescription-utils";
 
 interface InitialSystemPayload {
   db: DatabaseDiagnostics;
@@ -68,11 +55,20 @@ export function SevaSetuWorkspace({
     initialData.visits[0]?.id || ""
   );
 
-  const activePrescription = prescriptions[0] || null;
+  // Selected prescription in the Post-Visit tab (defaults to the newest)
+  const [selectedPrescriptionId, setSelectedPrescriptionId] =
+    React.useState<string>(initialData.prescriptions[0]?.id || "");
+
+  const activePrescription =
+    prescriptions.find((p) => p.id === selectedPrescriptionId) ||
+    prescriptions[0] ||
+    null;
   const pendingDaysCount = activePrescription
-    ? activePrescription.medications.filter((m) => m.daysOfDosage === null)
-        .length
+    ? countMissingDays(activePrescription.medications)
     : 0;
+  const waitingVisitsCount = visits.filter(
+    (v) => v.status !== "completed"
+  ).length;
 
   const refreshSystemState = React.useCallback(async () => {
     try {
@@ -96,12 +92,25 @@ export function SevaSetuWorkspace({
     await refreshSystemState();
   }
 
+  async function handleUpdateVisitStatus(id: string, status: VisitStatus) {
+    const res = await fetch(`/api/visits/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || "Could not update this patient.");
+    }
+    await refreshSystemState();
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        readyVisitsCount={visits.length}
+        readyVisitsCount={waitingVisitsCount}
         pendingDaysCount={pendingDaysCount}
         gemmaStatus={gemmaStatus}
         dbReady={dbStats.fileExists}
@@ -210,7 +219,8 @@ export function SevaSetuWorkspace({
                   Auto-removes outdated Rx reminders
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                  {dbStats.tables.calendarEventsActive} active events tracked
+                  {dbStats.tables.calendarEventsActive} active ·{" "}
+                  {dbStats.tables.calendarEventsRemoved} replaced
                 </p>
               </div>
             </div>
@@ -234,186 +244,21 @@ export function SevaSetuWorkspace({
             selectedVisitId={selectedVisitId}
             onSelectVisit={setSelectedVisitId}
             onRefresh={refreshSystemState}
+            onUpdateVisitStatus={handleUpdateVisitStatus}
           />
         )}
 
-        {/* WORKSPACE 3: POST-VISIT PRESCRIPTION & CALENDAR */}
-        {activeTab === "postvisit" && (
-          <div className="space-y-5">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                  3. Post-Visit Prescription &amp; Smart Calendar{" "}
-                  <span className="font-devanagari font-normal text-muted-foreground">
-                    (दवा पर्ची और कैलेंडर)
-                  </span>
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Plain-language medicine purpose guide, missing dosage-days
-                  check, and automatic Google Calendar reminder replacement.
-                </p>
-              </div>
-              {activePrescription && (
-                <Badge variant="outline" className="w-fit font-mono text-xs">
-                  {activePrescription.imageName || activePrescription.id}
-                </Badge>
-              )}
-            </div>
-
-            {pendingDaysCount > 0 && (
-              <Alert variant="warning">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>
-                  Dosage Days Required ({pendingDaysCount} medicine missing
-                  duration)
-                </AlertTitle>
-                <AlertDescription>
-                  One or more medicines on the scanned prescription did not
-                  clearly specify how many days to take it. Confirm the dosage
-                  days before syncing to Google Calendar.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="grid gap-6 lg:grid-cols-12">
-              {/* Extracted Prescription Medications Table */}
-              <Card className="lg:col-span-8">
-                <CardHeader className="pb-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-base">
-                        Extracted Prescription &amp; Medicine Purpose
-                      </CardTitle>
-                      <CardDescription>
-                        {activePrescription?.patientName} · Prescribed by{" "}
-                        {activePrescription?.doctorName}
-                      </CardDescription>
-                    </div>
-                    <Badge
-                      variant={pendingDaysCount > 0 ? "warning" : "success"}
-                    >
-                      {pendingDaysCount > 0
-                        ? "Needs Days Confirmation"
-                        : "Ready for Calendar Sync"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Medicine &amp; Timing</TableHead>
-                        <TableHead>
-                          What Is This Medicine Used For? (दवा का उपयोग)
-                        </TableHead>
-                        <TableHead className="w-[140px]">
-                          Dosage Days
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {activePrescription?.medications.map((med) => (
-                        <TableRow key={med.id}>
-                          <TableCell className="align-top">
-                            <div className="font-medium text-foreground">
-                              {med.name}{" "}
-                              <span className="font-mono text-xs text-muted-foreground">
-                                {med.dosage}
-                              </span>
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              <Badge variant="secondary" className="font-mono">
-                                {med.frequencyCode}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {med.foodRelation === "before_food"
-                                  ? "Before Food"
-                                  : "After Food"}
-                              </span>
-                            </div>
-                            <p className="mt-1 font-mono text-[11px] text-muted-foreground tabular-nums">
-                              Slots: {med.recommendedTimes.join(", ")}
-                            </p>
-                          </TableCell>
-
-                          <TableCell className="align-top">
-                            <p className="text-xs text-foreground">
-                              {med.whatIsItUsedForEn}
-                            </p>
-                            <p className="mt-1 font-devanagari text-xs text-muted-foreground">
-                              {med.whatIsItUsedForHi}
-                            </p>
-                          </TableCell>
-
-                          <TableCell className="align-top tabular-nums">
-                            {med.daysOfDosage === null ? (
-                              <Badge variant="warning">
-                                Missing — Prompt User
-                              </Badge>
-                            ) : (
-                              <span className="text-xs font-medium text-foreground">
-                                {med.daysOfDosage} Days
-                              </span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-
-              {/* Active Calendar Events Tracked in SQLite */}
-              <Card className="lg:col-span-4">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">
-                      Google Calendar State
-                    </CardTitle>
-                    <Badge variant="outline" className="font-mono text-[11px]">
-                      sevasetu-rx
-                    </Badge>
-                  </div>
-                  <CardDescription>
-                    Existing prescription reminders tracked in SQLite{" "}
-                    <code className="font-mono text-xs">calendar_events</code>.
-                    Automatically replaced when a new prescription is synced.
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="space-y-2.5">
-                  {calendarEvents.map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="rounded-md border bg-muted/20 p-3 text-xs"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-foreground">
-                          {ev.medicineName} ({ev.dosage})
-                        </span>
-                        <span className="font-mono text-muted-foreground tabular-nums">
-                          {ev.scheduledTime}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-muted-foreground">
-                        {ev.whatIsItUsedForEn}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span className="font-mono">{ev.googleEventId}</span>
-                        <Badge variant="secondary" className="text-[10px]">
-                          {ev.status === "active"
-                            ? "Active (Will Replace)"
-                            : "Removed"}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
+        {/* Kept mounted (just hidden) so a half-typed prescription survives tab switches */}
+        <div hidden={activeTab !== "postvisit"}>
+          <PostVisitWorkspace
+            prescriptions={prescriptions}
+            visits={visits}
+            calendarEvents={calendarEvents}
+            selectedPrescriptionId={selectedPrescriptionId}
+            onSelectPrescription={setSelectedPrescriptionId}
+            onRefresh={refreshSystemState}
+          />
+        </div>
       </main>
 
       {/* Clean Clinical Footer */}
@@ -424,7 +269,7 @@ export function SevaSetuWorkspace({
               SevaSetu (सेवासेतु)
             </span>
             <span>·</span>
-            <span>Phase 2 · Bay Intake Active</span>
+            <span>Phase 4 · Smart Calendar Sync Active</span>
           </div>
           <div className="flex items-center gap-4 tabular-nums">
             <span>SQLite: data/sevasetu.db ({dbStats.tables.visits} visits)</span>

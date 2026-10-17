@@ -99,6 +99,30 @@
         "  ]",
         "}"
       ]
+    },
+    "medicinePurposeExplainer": {
+      "id": "medicine_purpose_v1",
+      "purpose": "Explains, in plain English and Hindi, what each manually entered medicine is generally used for. Used only for medicines missing from the built-in dictionary.",
+      "temperature": 0.1,
+      "systemInstruction": "You explain medicines to patients in simple, reassuring language.",
+      "template": [
+        "You explain medicines to patients in simple, reassuring, non-alarming language at an Indian outpatient clinic.",
+        "For each medicine below, state in one short sentence what it is generally used for, in plain English and plain Hindi (Devanagari), plus one short practical precaution if there is a well-known one (otherwise an empty string).",
+        "Do NOT give dosage advice and do NOT guess if you do not recognise the medicine: use an empty string for all three fields instead.",
+        "",
+        "Medicines:",
+        "{{medicineList}}",
+        "",
+        "Return ONLY a valid JSON array with one object per medicine, in the same order:",
+        "[",
+        "  {",
+        "    \"name\": \"Medicine name exactly as given\",",
+        "    \"whatIsItUsedForEn\": \"Plain English sentence\",",
+        "    \"whatIsItUsedForHi\": \"Plain Hindi Devanagari sentence\",",
+        "    \"precautionNote\": \"Short practical note or empty string\"",
+        "  }",
+        "]"
+      ]
     }
   }
 }

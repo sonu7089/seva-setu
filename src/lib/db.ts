@@ -565,6 +565,18 @@ export function updateVisitFollowUpsAndBrief(
   return getVisitById(id);
 }
 
+/** Moves a patient between the doctor's waiting queue and the completed list. */
+export function updateVisitStatus(
+  id: string,
+  status: VisitStatus
+): VisitRecord | null {
+  const db = getDb();
+  const result = db
+    .prepare("UPDATE visits SET status = ?, updated_at = ? WHERE id = ?")
+    .run(status, new Date().toISOString(), id);
+  return result.changes > 0 ? getVisitById(id) : null;
+}
+
 interface RawPrescriptionRow {
   id: string;
   visit_id: string | null;
@@ -654,13 +666,41 @@ export function savePrescription(params: {
   return getPrescriptionById(id)!;
 }
 
+/**
+ * Replaces a prescription's medicines (e.g. after the patient confirms dosage
+ * days or edits a row). Any change invalidates a previous calendar sync.
+ */
+export function updatePrescriptionMedications(
+  id: string,
+  medications: ExtractedMedication[]
+): PrescriptionRecord | null {
+  const db = getDb();
+  const hasMissingDays = medications.some(
+    (m) => m.daysOfDosage === null || m.daysOfDosage <= 0
+  );
+  const result = db
+    .prepare(
+      `UPDATE prescriptions
+       SET medications_json = ?,
+           calendar_sync_status = ?,
+           last_synced_at = NULL
+       WHERE id = ?`
+    )
+    .run(
+      JSON.stringify(medications),
+      hasMissingDays ? "needs_days_confirmation" : "unsynced",
+      id
+    );
+  return result.changes > 0 ? getPrescriptionById(id) : null;
+}
+
 export function listCalendarEvents(
   status?: "active" | "removed_by_new_rx"
 ): CalendarEventRecord[] {
   const db = getDb();
   const query = status
     ? "SELECT * FROM calendar_events WHERE status = ? ORDER BY scheduled_date ASC, scheduled_time ASC"
-    : "SELECT * FROM calendar_events ORDER BY created_at DESC, scheduled_time ASC";
+    : "SELECT * FROM calendar_events ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, scheduled_date ASC, scheduled_time ASC";
 
   const rows = (
     status ? db.prepare(query).all(status) : db.prepare(query).all()
@@ -739,6 +779,12 @@ export function replaceActiveCalendarEvents(
         now
       );
     }
+
+    db.prepare(
+      `UPDATE prescriptions
+       SET calendar_sync_status = 'unsynced'
+       WHERE id != ? AND calendar_sync_status = 'synced'`
+    ).run(prescriptionId);
 
     db.prepare(
       `UPDATE prescriptions

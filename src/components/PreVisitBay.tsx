@@ -38,6 +38,11 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { cn } from "@/lib/utils";
 import {
+  firstIntakeError,
+  validateIntake,
+  type IntakeField,
+} from "@/lib/validation";
+import {
   BayVitals,
   EntryByRole,
   InputModality,
@@ -115,6 +120,11 @@ export function PreVisitBay({
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [savedVisit, setSavedVisit] = React.useState<VisitRecord | null>(null);
+  // Inline validation: a field's error shows once it has been blurred, or after a blocked submit.
+  const [touched, setTouched] = React.useState<
+    Partial<Record<IntakeField, boolean>>
+  >({});
+  const [showAllErrors, setShowAllErrors] = React.useState(false);
 
   const appendTranscript = React.useCallback((text: string) => {
     if (!text) return;
@@ -132,8 +142,28 @@ export function PreVisitBay({
     if (inputMode !== "voice" && isListening) stopListening();
   }, [inputMode, isListening, stopListening]);
 
-  const canContinue =
-    transcript.trim().length > 0 && age.trim().length > 0 && gender.length > 0;
+  const errors = React.useMemo(
+    () =>
+      validateIntake({
+        age,
+        vitals,
+        includeVitals: entryBy === "nurse_bay",
+      }),
+    [age, vitals, entryBy]
+  );
+  const hasErrors = Object.keys(errors).length > 0;
+  // Required fields gate the button; format errors are revealed on click instead,
+  // so the user always gets a visible explanation rather than a dead button.
+  const hasRequired =
+    transcript.trim().length > 0 &&
+    gender.length > 0 &&
+    age.trim().length > 0;
+  const canContinue = hasRequired && !hasErrors;
+
+  const fieldError = (field: IntakeField): string | undefined =>
+    touched[field] || showAllErrors ? errors[field] : undefined;
+  const markTouched = (field: IntakeField) =>
+    setTouched((prev) => (prev[field] ? prev : { ...prev, [field]: true }));
   const answeredCount = questions.filter((q) => q.answer?.trim()).length;
 
   function setVital(key: keyof BayVitals, value: string) {
@@ -149,6 +179,8 @@ export function PreVisitBay({
     setTranscript(sample.text);
     setQuestions([]);
     setError(null);
+    setTouched({});
+    setShowAllErrors(false);
   }
 
   function setAnswer(id: string, answer: string) {
@@ -166,6 +198,8 @@ export function PreVisitBay({
     setQuestions([]);
     setSavedVisit(null);
     setError(null);
+    setTouched({});
+    setShowAllErrors(false);
   }
 
   const patientInfo = {
@@ -175,8 +209,18 @@ export function PreVisitBay({
     vitals: entryBy === "nurse_bay" ? vitals : undefined,
   };
 
+  /** Reveals every inline error and blocks the action when the form is invalid. */
+  function blockIfInvalid(): boolean {
+    const message = firstIntakeError(errors);
+    if (!message) return false;
+    setShowAllErrors(true);
+    setError(`Please fix the highlighted fields: ${message}`);
+    return true;
+  }
+
   async function handleGenerateFollowUps() {
     if (speech.listening) speech.stop();
+    if (blockIfInvalid()) return;
     setIsGenerating(true);
     setError(null);
     try {
@@ -209,6 +253,7 @@ export function PreVisitBay({
   }
 
   async function handleSendToDoctor() {
+    if (blockIfInvalid()) return;
     setIsSaving(true);
     setError(null);
     try {
@@ -316,9 +361,15 @@ export function PreVisitBay({
                     onChange={(e) =>
                       setAge(e.target.value.replace(/\D/g, "").slice(0, 3))
                     }
+                    onBlur={() => markTouched("age")}
                     placeholder="46"
                     className="tabular-nums"
+                    aria-invalid={fieldError("age") ? true : undefined}
+                    aria-describedby={
+                      fieldError("age") ? "patient-age-error" : undefined
+                    }
                   />
+                  <FieldError id="patient-age-error" message={fieldError("age")} />
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="patient-gender">
@@ -348,35 +399,43 @@ export function PreVisitBay({
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <VitalField
                         id="vital-bp"
+                        error={fieldError("bp")}
+                        onBlur={() => markTouched("bp")}
                         label="BP"
                         unit="mmHg"
                         placeholder="120/80"
                         value={vitals.bp}
-                        onChange={(v) => setVital("bp", v)}
+                        onChange={(v) => setVital("bp", v.replace(/[^\d/]/g, "").slice(0, 7))}
                       />
                       <VitalField
                         id="vital-temp"
+                        error={fieldError("temp")}
+                        onBlur={() => markTouched("temp")}
                         label="Temp"
                         unit="°F"
                         placeholder="98.6"
                         value={vitals.temp}
-                        onChange={(v) => setVital("temp", v)}
+                        onChange={(v) => setVital("temp", v.replace(/[^\d.]/g, "").slice(0, 5))}
                       />
                       <VitalField
                         id="vital-pulse"
+                        error={fieldError("pulse")}
+                        onBlur={() => markTouched("pulse")}
                         label="Pulse"
                         unit="bpm"
                         placeholder="80"
                         value={vitals.pulse}
-                        onChange={(v) => setVital("pulse", v)}
+                        onChange={(v) => setVital("pulse", v.replace(/\D/g, "").slice(0, 3))}
                       />
                       <VitalField
                         id="vital-spo2"
+                        error={fieldError("spo2")}
+                        onBlur={() => markTouched("spo2")}
                         label="SpO₂"
                         unit="%"
                         placeholder="98"
                         value={vitals.spo2}
-                        onChange={(v) => setVital("spo2", v)}
+                        onChange={(v) => setVital("spo2", v.replace(/[^\d.]/g, "").slice(0, 5))}
                       />
                     </div>
                   </div>
@@ -419,7 +478,9 @@ export function PreVisitBay({
                 </TabsList>
 
                 <TabsContent value="voice" className="mt-4">
-                  {!speech.supported ? (
+                  {speech.supported === null ? (
+                    <Skeleton className="h-[74px] w-full" />
+                  ) : speech.supported === false ? (
                     <Alert variant="warning">
                       <AlertCircle className="h-4 w-4" />
                       <AlertTitle>Voice input unavailable</AlertTitle>
@@ -468,9 +529,11 @@ export function PreVisitBay({
                     </div>
                   )}
                   {speech.error && (
-                    <p className="mt-2 text-xs text-destructive">
-                      {speech.error}
-                    </p>
+                    <Alert variant="destructive" className="mt-3">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Voice input stopped</AlertTitle>
+                      <AlertDescription>{speech.error}</AlertDescription>
+                    </Alert>
                   )}
                 </TabsContent>
 
@@ -519,13 +582,19 @@ export function PreVisitBay({
 
             <CardFooter className="justify-between gap-3 border-t pt-4">
               <p className="text-xs text-muted-foreground">
-                {canContinue
-                  ? "Next, a few quick follow-up questions."
-                  : "Age, gender and symptoms are required."}
+                {(Object.keys(errors) as IntakeField[]).some((f) =>
+                  fieldError(f)
+                )
+                  ? "Fix the highlighted fields to continue."
+                  : !hasRequired
+                    ? "Age, gender and symptoms are required."
+                    : canContinue
+                      ? "Next, a few quick follow-up questions."
+                      : "Check the age and vitals before continuing."}
               </p>
               <Button
                 onClick={handleGenerateFollowUps}
-                disabled={!canContinue || isGenerating || !!savedVisit}
+                disabled={!hasRequired || isGenerating || !!savedVisit}
               >
                 <Sparkles />
                 {isGenerating
@@ -636,20 +705,33 @@ export function PreVisitBay({
   );
 }
 
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} className="text-xs text-destructive">
+      {message}
+    </p>
+  );
+}
+
 function VitalField({
   id,
   label,
   unit,
   placeholder,
   value,
+  error,
   onChange,
+  onBlur,
 }: {
   id: string;
   label: string;
   unit: string;
   placeholder: string;
   value?: string;
+  error?: string;
   onChange: (value: string) => void;
+  onBlur: () => void;
 }) {
   return (
     <div className="space-y-1.5">
@@ -663,10 +745,15 @@ function VitalField({
         id={id}
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         placeholder={placeholder}
         className="tabular-nums"
         autoComplete="off"
+        inputMode="decimal"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
       />
+      <FieldError id={`${id}-error`} message={error} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createVisit } from "@/lib/db";
 import { generateDoctorIntakeBrief } from "@/lib/gemma";
+import { firstIntakeError, validateIntake } from "@/lib/validation";
 import { PreVisitInput, TextFollowUpQuestion } from "@/types/sevasetu";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,20 @@ export async function POST(request: NextRequest) {
           ok: false,
           error: "Age, gender and a symptom description are required.",
         },
+        { status: 400 }
+      );
+    }
+
+    const validationError = firstIntakeError(
+      validateIntake({
+        age: body.patientInfo.age,
+        vitals: body.patientInfo.vitals,
+        includeVitals: body.entryBy !== "patient",
+      })
+    );
+    if (validationError) {
+      return NextResponse.json(
+        { ok: false, error: validationError },
         { status: 400 }
       );
     }
