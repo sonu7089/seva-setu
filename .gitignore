@@ -28,6 +28,12 @@ data/
 .vscode/
 .idea/
 
+# internal pitch & strategy docs (not for the public repo)
+PITCH.md
+BRIEF.md
+VALUE_PROP.md
+TESTING_CHECKLIST.md
+
 # misc
 .DS_Store
 *.pem
