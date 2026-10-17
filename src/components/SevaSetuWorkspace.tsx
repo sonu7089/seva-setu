@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RefreshCw } from "lucide-react";
+import { CheckCircle2, Play, RefreshCw, Sparkles } from "lucide-react";
 import { DoctorConsole } from "@/components/DoctorConsole";
 import { Navbar } from "@/components/Navbar";
 import { PostVisitWorkspace } from "@/components/PostVisitWorkspace";
@@ -103,6 +103,42 @@ export function SevaSetuWorkspace({
       throw new Error(data.error || "Could not update this patient.");
     }
     await refreshSystemState();
+  }
+
+  // Phase 5 — one-click golden-path demo (Hindi intake → Doctor brief →
+  // prescription with missing-days prompt → calendar replacement setup).
+  const [demoLoading, setDemoLoading] = React.useState(false);
+  const [demoError, setDemoError] = React.useState<string | null>(null);
+  const [demoLoaded, setDemoLoaded] = React.useState<{
+    visitId: string;
+    prescriptionId: string;
+    patientName: string;
+  } | null>(null);
+
+  async function handleLoadDemoFlow() {
+    setDemoLoading(true);
+    setDemoError(null);
+    try {
+      const res = await fetch("/api/system/demo-flow", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Could not load the demo flow.");
+      }
+      setSelectedVisitId(data.visit.id);
+      setSelectedPrescriptionId(data.prescription.id);
+      setDemoLoaded({
+        visitId: data.visit.id,
+        prescriptionId: data.prescription.id,
+        patientName: data.visit.patientName,
+      });
+      await refreshSystemState();
+    } catch (err) {
+      setDemoError(
+        err instanceof Error ? err.message : "Could not load the demo flow."
+      );
+    } finally {
+      setDemoLoading(false);
+    }
   }
 
   return (
@@ -230,6 +266,106 @@ export function SevaSetuWorkspace({
 
       {/* Main Workspace Container */}
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
+        {/* Phase 5 — one-click golden-path demo for judges & contributors */}
+        <div className="mb-6 rounded-lg border border-primary/25 bg-primary/[0.04] p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  60-second live demo flow{" "}
+                  <span className="font-devanagari font-normal text-muted-foreground">
+                    (लाइव डेमो)
+                  </span>
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Loads a fresh Hindi bay intake → Doctor brief → prescription
+                  with a missing-dosage-days prompt → stale calendar events
+                  ready to be replaced. Works offline, no API key needed.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => void handleLoadDemoFlow()}
+              disabled={demoLoading}
+              className="shrink-0"
+            >
+              <Play className="h-4 w-4" />
+              {demoLoading ? "Loading demo…" : "Load Live Demo Flow"}
+            </Button>
+          </div>
+
+          {demoError && (
+            <p className="mt-3 text-xs font-medium text-destructive">
+              {demoError}
+            </p>
+          )}
+
+          {demoLoaded && !demoError && (
+            <div className="mt-3 rounded-md border bg-card p-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                Demo ready for {demoLoaded.patientName} — walk it in order:
+              </p>
+              <ol className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                <li className="flex items-start gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary text-[11px] font-semibold text-primary-foreground">
+                    1
+                  </span>
+                  <span>
+                    Open the{" "}
+                    <button
+                      type="button"
+                      className="font-semibold text-primary underline-offset-2 hover:underline"
+                      onClick={() => setActiveTab("doctor")}
+                    >
+                      Doctor Console
+                    </button>{" "}
+                    — the Hindi brief is selected and scannable in ~15 seconds.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary text-[11px] font-semibold text-primary-foreground">
+                    2
+                  </span>
+                  <span>
+                    Open{" "}
+                    <button
+                      type="button"
+                      className="font-semibold text-primary underline-offset-2 hover:underline"
+                      onClick={() => setActiveTab("postvisit")}
+                    >
+                      Post-Visit
+                    </button>{" "}
+                    — confirm the missing dosage days on the amber prompt.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary text-[11px] font-semibold text-primary-foreground">
+                    3
+                  </span>
+                  <span>
+                    Hit calendar sync — watch the 2 stale previous-Rx events get
+                    removed and replaced by the new schedule.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary text-[11px] font-semibold text-primary-foreground">
+                    4
+                  </span>
+                  <span>
+                    Download the{" "}
+                    <span className="font-medium text-foreground">.ics</span>{" "}
+                    file to show the schedule works without a Google login.
+                  </span>
+                </li>
+              </ol>
+            </div>
+          )}
+        </div>
+
         {/* Kept mounted (just hidden) so a half-finished intake survives tab switches */}
         <div hidden={activeTab !== "previsit"}>
           <PreVisitBay
@@ -269,7 +405,7 @@ export function SevaSetuWorkspace({
               SevaSetu (सेवासेतु)
             </span>
             <span>·</span>
-            <span>Phase 4 · Smart Calendar Sync Active</span>
+            <span>Phase 5 · Demo Ready & Open Source</span>
           </div>
           <div className="flex items-center gap-4 tabular-nums">
             <span>SQLite: data/sevasetu.db ({dbStats.tables.visits} visits)</span>

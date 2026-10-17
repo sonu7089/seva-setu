@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "pack": "intake-templates",
+  "version": "1.0.0",
+  "description": "Common OPD intake complaint templates (Hindi + English) for SevaSetu. Each complaint ships a one-tap sample scenario for the Pre-Visit Bay plus 3-4 generic, non-diagnostic text follow-up questions. Contribute a new complaint by copying one entry and opening a PR — see CONTRIBUTING.md.",
+  "contributionGuide": "CONTRIBUTING.md#intake-complaint-templates",
+  "complaints": [
+    {
+      "id": "fever",
+      "labelEn": "Fever",
+      "labelHi": "बुखार",
+      "sample": {
+        "name": "सुनीता देवी",
+        "age": "46",
+        "gender": "Female",
+        "vitals": { "bp": "126/82", "temp": "100.8", "pulse": "92", "spo2": "98" },
+        "textEn": "High fever with evening chills for the past 3 days, plus body ache.",
+        "textHi": "मरीज़ को पिछले तीन दिन से शाम के समय तेज़ बुखार और सूखी खांसी हो रही है, रात में लेटने पर खांसी बढ़ जाती है।"
+      },
+      "followUps": [
+        {
+          "id": "fq-fever-1",
+          "questionEn": "Since how many days has the fever lasted, and is it continuous or comes and goes?",
+          "questionHi": "बुखार कितने दिनों से है, और क्या यह लगातार रहता है या आता-जाता है?",
+          "quickOptionsEn": ["1–2 days, comes and goes", "3–5 days with evening spikes", "More than a week"],
+          "quickOptionsHi": ["1–2 दिन, आता-जाता है", "3–5 दिन, शाम को ज़्यादा", "एक हफ़्ते से ज़्यादा"]
+        },
+        {
+          "id": "fq-fever-2",
+          "questionEn": "Does the fever come with chills, body ache, or headache?",
+          "questionHi": "क्या बुखार के साथ ठंड लगना, बदन दर्द या सिरदर्द भी है?",
+          "quickOptionsEn": ["Yes, evening chills & body ache", "Only mild headache", "No chills"],
+          "quickOptionsHi": ["हाँ, शाम को ठंड और बदन दर्द", "केवल हल्का सिरदर्द", "ठंड नहीं लगती"]
+        },
+        {
+          "id": "fq-fever-3",
+          "questionEn": "Has the patient taken any medicine at home so far?",
+          "questionHi": "क्या मरीज़ ने घर पर कोई दवा ली है?",
+          "quickOptionsEn": ["Paracetamol 500mg yesterday", "Cough syrup only", "No medicine taken"],
+          "quickOptionsHi": ["कल पैरासिटामोल 500mg ली थी", "केवल खांसी का सिरप", "कोई दवा नहीं ली"]
+        },
+        {
+          "id": "fq-fever-4",
+          "questionEn": "Any known drug allergies or chronic conditions (Diabetes/BP)?",
+          "questionHi": "क्या किसी दवा से एलर्जी या कोई पुरानी बीमारी (शुगर/बीपी) है?",
+          "quickOptionsEn": ["No known allergies", "Hypertension (on medication)", "Diabetes Type 2"],
+          "quickOptionsHi": ["कोई एलर्जी नहीं", "हाई बीपी (दवा चल रही है)", "डायबिटीज (शुगर)"]
+        }
+      ]
+    },
+    {
+      "id": "cough-cold",
+      "labelEn": "Cough & cold",
+      "labelHi": "खांसी-जुकाम",
+      "sample": {
+        "name": "Aarav Singh",
+        "age": "12",
+        "gender": "Male",
+        "vitals": { "bp": "100/66", "temp": "99.6", "pulse": "88", "spo2": "98" },
+        "textEn": "Dry cough and runny nose for 4 days, cough gets worse at night.",
+        "textHi": "चार दिन से सूखी खांसी और बहती नाक है, रात में खांसी बढ़ जाती है।"
+      },
+      "followUps": [
+        {
+          "id": "fq-cough-1",
+          "questionEn": "Is the cough dry or with phlegm (balgam)?",
+          "questionHi": "खांसी सूखी है या बलगम वाली?",
+          "quickOptionsEn": ["Dry cough", "With white phlegm", "With yellow/green phlegm"],
+          "quickOptionsHi": ["सूखी खांसी", "सफ़ेद बलगम के साथ", "पीले/हरे बलगम के साथ"]
+        },
+        {
+          "id": "fq-cough-2",
+          "questionEn": "Any breathing difficulty, wheezing, or chest pain?",
+          "questionHi": "क्या सांस लेने में तकलीफ़, घरघराहट या सीने में दर्द है?",
+          "quickOptionsEn": ["None of these", "Mild throat irritation only", "Breathing difficulty present"],
+          "quickOptionsHi": ["इनमें से कुछ नहीं", "केवल गले में खराश", "सांस में तकलीफ़ है"]
+        },
+        {
+          "id": "fq-cough-3",
+          "questionEn": "Any fever, allergy history, or asthma in the family?",
+          "questionHi": "क्या बुखार, एलर्जी या परिवार में अस्थमा (दमा) की हिस्ट्री है?",
+          "quickOptionsEn": ["No fever or allergy", "Seasonal dust allergy", "Asthma in family"],
+          "quickOptionsHi": ["न बुखार, न एलर्जी", "धूल-मिट्टी से एलर्जी", "परिवार में अस्थमा"]
+        }
+      ]
+    },
+    {
+      "id": "acidity-stomach-pain",
+      "labelEn": "Acidity & reflux",
+      "labelHi": "एसिडिटी और पेट दर्द",
+      "sample": {
+        "name": "Vikram Nair",
+        "age": "38",
+        "gender": "Male",
+        "vitals": { "bp": "118/76", "temp": "98.4", "pulse": "78", "spo2": "99" },
+        "textEn": "Experiencing upper abdominal burning and sour reflux for 4 days, worse after dinner and spicy food.",
+        "textHi": "चार दिन से पेट के ऊपरी हिस्से में जलन और खट्टी डकार है, रात के खाने के बाद ज़्यादा होती है।"
+      },
+      "followUps": [
+        {
+          "id": "fq-acid-1",
+          "questionEn": "When is the upper abdominal burning worse?",
+          "questionHi": "पेट के ऊपरी हिस्से में जलन कब ज़्यादा होती है?",
+          "quickOptionsEn": ["After spicy meals & late at night", "Empty stomach in morning", "Continuous all day"],
+          "quickOptionsHi": ["मसालेदार खाने के बाद और रात में", "सुबह खाली पेट", "पूरे दिन लगातार"]
+        },
+        {
+          "id": "fq-acid-2",
+          "questionEn": "Any red-flag symptoms like vomiting, black stools, or weight loss?",
+          "questionHi": "क्या उल्टी, काले रंग का मल या वज़न घटने जैसी कोई समस्या है?",
+          "quickOptionsEn": ["None of these", "Occasional nausea", "Vomiting present"],
+          "quickOptionsHi": ["इनमें से कुछ नहीं", "कभी-कभी जी मिचलाना", "उल्टी होना"]
+        },
+        {
+          "id": "fq-acid-3",
+          "questionEn": "Any painkillers, tea/coffee excess, smoking, or alcohol use?",
+          "questionHi": "क्या दर्द की दवा, ज़्यादा चाय-कॉफ़ी, धूम्रपान या शराब का सेवन है?",
+          "quickOptionsEn": ["None of these", "Frequent painkillers", "Excess tea/coffee"],
+          "quickOptionsHi": ["इनमें से कुछ नहीं", "अक्सर दर्द की दवा", "ज़्यादा चाय-कॉफ़ी"]
+        }
+      ]
+    },
+    {
+      "id": "headache",
+      "labelEn": "Headache & dizziness",
+      "labelHi": "सिरदर्द और चक्कर",
+      "sample": {
+        "name": "रामेश्वर शर्मा",
+        "age": "58",
+        "gender": "Male",
+        "vitals": { "bp": "148/94", "temp": "98.6", "pulse": "84", "spo2": "97" },
+        "textEn": "Headache and dizziness for 2 days, worse in the morning after waking up.",
+        "textHi": "दो दिन से सिर में दर्द और चक्कर आ रहे हैं, सुबह उठने पर ज़्यादा महसूस होता है।"
+      },
+      "followUps": [
+        {
+          "id": "fq-head-1",
+          "questionEn": "Where is the headache, and how severe is it on a 1–10 scale?",
+          "questionHi": "सिरदर्द कहाँ है और 1–10 में कितना तेज़ है?",
+          "quickOptionsEn": ["Forehead, mild (1–3)", "One side, moderate (4–6)", "Whole head, severe (7–10)"],
+          "quickOptionsHi": ["माथे पर, हल्का (1–3)", "एक तरफ़, मध्यम (4–6)", "पूरे सिर में, तेज़ (7–10)"]
+        },
+        {
+          "id": "fq-head-2",
+          "questionEn": "Any vision changes, vomiting, or weakness on one side?",
+          "questionHi": "क्या नज़र में धुंधलापन, उल्टी या शरीर के एक तरफ़ कमज़ोरी है?",
+          "quickOptionsEn": ["None of these", "Mild nausea only", "Vision blurring present"],
+          "quickOptionsHi": ["इनमें से कुछ नहीं", "केवल हल्का जी मिचलाना", "नज़र धुंधली होती है"]
+        },
+        {
+          "id": "fq-head-3",
+          "questionEn": "Known BP, diabetes, or regular BP medication?",
+          "questionHi": "क्या बीपी/शुगर की बीमारी है या बीपी की नियमित दवा चलती है?",
+          "quickOptionsEn": ["No BP/diabetes", "High BP, on medication", "Diabetes, on medication"],
+          "quickOptionsHi": ["न बीपी, न शुगर", "हाई बीपी, दवा चल रही है", "शुगर, दवा चल रही है"]
+        }
+      ]
+    },
+    {
+      "id": "joint-pain",
+      "labelEn": "Joint pain",
+      "labelHi": "जोड़ों का दर्द",
+      "sample": {
+        "name": "Kamla Devi",
+        "age": "64",
+        "gender": "Female",
+        "vitals": { "bp": "132/84", "temp": "98.2", "pulse": "80", "spo2": "98" },
+        "textEn": "Knee joint pain for 2 months, worse while climbing stairs and in the morning.",
+        "textHi": "दो महीने से घुटनों में दर्द है, सीढ़ी चढ़ने पर और सुबह ज़्यादा होता है।"
+      },
+      "followUps": [
+        {
+          "id": "fq-joint-1",
+          "questionEn": "Which joints hurt, and is there swelling or stiffness?",
+          "questionHi": "कौन-से जोड़ों में दर्द है, और क्या सूजन या अकड़न भी है?",
+          "quickOptionsEn": ["Both knees, morning stiffness", "One knee with swelling", "Multiple joints ache"],
+          "quickOptionsHi": ["दोनों घुटने, सुबह अकड़न", "एक घुटने में सूजन", "कई जोड़ों में दर्द"]
+        },
+        {
+          "id": "fq-joint-2",
+          "questionEn": "Does the pain reduce with rest or need daily painkillers?",
+          "questionHi": "क्या आराम से दर्द कम होता है या रोज़ दर्द की दवा लेनी पड़ती है?",
+          "quickOptionsEn": ["Reduces with rest", "Needs painkiller some days", "Daily painkiller needed"],
+          "quickOptionsHi": ["आराम से कम होता है", "कभी-कभी दर्द की दवा", "रोज़ दर्द की दवा लेनी पड़ती है"]
+        },
+        {
+          "id": "fq-joint-3",
+          "questionEn": "Any history of injury, uric acid, or arthritis diagnosis?",
+          "questionHi": "क्या चोट, यूरिक एसिड या गठिया (आर्थराइटिस) की हिस्ट्री है?",
+          "quickOptionsEn": ["None of these", "High uric acid earlier", "Arthritis diagnosed"],
+          "quickOptionsHi": ["इनमें से कुछ नहीं", "पहले यूरिक एसिड बढ़ा था", "गठिया बताया गया है"]
+        }
+      ]
+    },
+    {
+      "id": "skin-rash",
+      "labelEn": "Skin rash & itching",
+      "labelHi": "त्वचा पर दाने और खुजली",
+      "sample": {
+        "name": "Priya Yadav",
+        "age": "27",
+        "gender": "Female",
+        "vitals": { "bp": "112/72", "temp": "98.6", "pulse": "82", "spo2": "99" },
+        "textEn": "Itchy red rashes on arms for 5 days, worse at night.",
+        "textHi": "पाँच दिन से हाथों पर लाल दाने और खुजली है, रात में ज़्यादा होती है।"
+      },
+      "followUps": [
+        {
+          "id": "fq-skin-1",
+          "questionEn": "Where is the rash, and is it spreading?",
+          "questionHi": "दाने शरीर पर कहाँ हैं और क्या फैल रहे हैं?",
+          "quickOptionsEn": ["Only on arms, stable", "Spreading slowly", "All over the body"],
+          "quickOptionsHi": ["केवल हाथों पर, स्थिर हैं", "धीरे-धीरे फैल रहे हैं", "पूरे शरीर पर"]
+        },
+        {
+          "id": "fq-skin-2",
+          "questionEn": "Any new soap, detergent, food, or medicine before the rash started?",
+          "questionHi": "क्या दाने से पहले कोई नया साबुन, डिटर्जेंट, खाना या दवा शुरू की थी?",
+          "quickOptionsEn": ["Nothing new", "New detergent/soap", "New medicine taken"],
+          "quickOptionsHi": ["कुछ नया नहीं", "नया डिटर्जेंट/साबुन", "नई दवा ली थी"]
+        },
+        {
+          "id": "fq-skin-3",
+          "questionEn": "Any fever, burning, pus, or family members with similar rash?",
+          "questionHi": "क्या बुखार, जलन, मवाद है या घर में किसी और को ऐसे दाने हैं?",
+          "quickOptionsEn": ["None of these", "Mild burning only", "Someone at home has it too"],
+          "quickOptionsHi": ["इनमें से कुछ नहीं", "केवल हल्की जलन", "घर में किसी और को भी है"]
+        }
+      ]
+    }
+  ]
+}

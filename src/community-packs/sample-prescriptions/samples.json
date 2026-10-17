@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "pack": "sample-prescriptions",
+  "version": "1.0.0",
+  "description": "Anonymized sample prescriptions for testing Gemma 4 vision extraction and the missing-dosage-days edge case. Images live in public/samples/. 'medications' is the offline fallback used when no Gemma provider is reachable, so the demo still works end to end. Add a new sample by dropping an SVG/photo in public/samples/ and appending an entry — see CONTRIBUTING.md.",
+  "contributionGuide": "CONTRIBUTING.md#sample-prescriptions",
+  "imageDirectory": "public/samples/",
+  "acceptedFormats": ["JPG", "PNG", "WEBP", "SVG"],
+  "samples": [
+    {
+      "id": "rx-sample-fever",
+      "label": "Fever & cough",
+      "description": "One medicine has no days written — triggers the days prompt.",
+      "imagePath": "/samples/rx-fever-cough.svg",
+      "patientName": "Sunita Devi",
+      "doctorName": "Dr. Arvind Kulkarni (MD, Internal Medicine)",
+      "clinicName": "SevaSetu Community Polyclinic",
+      "medications": [
+        {
+          "name": "Tab Paracetamol",
+          "dosage": "650 mg",
+          "frequencyCode": "TDS",
+          "foodRelation": "after_food",
+          "daysOfDosage": 3
+        },
+        {
+          "name": "Tab Azithromycin",
+          "dosage": "500 mg",
+          "frequencyCode": "OD",
+          "foodRelation": "after_food",
+          "daysOfDosage": 3
+        },
+        {
+          "name": "Syp Dextromethorphan + CPM",
+          "dosage": "10 ml",
+          "frequencyCode": "BD",
+          "foodRelation": "after_food",
+          "daysOfDosage": null
+        }
+      ]
+    },
+    {
+      "id": "rx-sample-acidity",
+      "label": "Acidity & reflux",
+      "description": "Every medicine has its duration written.",
+      "imagePath": "/samples/rx-acidity.svg",
+      "patientName": "Vikram Nair",
+      "doctorName": "Dr. Meera Iyer (MBBS, MD)",
+      "clinicName": "SevaSetu Community Polyclinic",
+      "medications": [
+        {
+          "name": "Tab Pantoprazole",
+          "dosage": "40 mg",
+          "frequencyCode": "OD",
+          "foodRelation": "before_food",
+          "daysOfDosage": 14
+        },
+        {
+          "name": "Tab Domperidone",
+          "dosage": "10 mg",
+          "frequencyCode": "BD",
+          "foodRelation": "before_food",
+          "daysOfDosage": 5
+        },
+        {
+          "name": "Syp Antacid Gel",
+          "dosage": "10 ml",
+          "frequencyCode": "TDS",
+          "foodRelation": "after_food",
+          "daysOfDosage": 5
+        }
+      ]
+    }
+  ]
+}

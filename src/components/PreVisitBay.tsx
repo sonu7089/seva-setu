@@ -38,6 +38,10 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { cn } from "@/lib/utils";
 import {
+  SAMPLE_SCENARIOS,
+  type IntakeSampleScenario as SampleScenario,
+} from "@/community-packs/intake-templates";
+import {
   firstIntakeError,
   validateIntake,
   type IntakeField,
@@ -46,50 +50,11 @@ import {
   BayVitals,
   EntryByRole,
   InputModality,
-  IntakeLanguage,
   TextFollowUpQuestion,
   VisitRecord,
 } from "@/types/sevasetu";
 
-interface SampleScenario {
-  label: string;
-  lang: Extract<IntakeLanguage, "hi" | "en">;
-  name: string;
-  age: string;
-  gender: string;
-  vitals: BayVitals;
-  text: string;
-}
-
-const SAMPLE_SCENARIOS: SampleScenario[] = [
-  {
-    label: "बुखार और खांसी",
-    lang: "hi",
-    name: "सुनीता देवी",
-    age: "46",
-    gender: "Female",
-    vitals: { bp: "126/82", temp: "100.8", pulse: "92", spo2: "98" },
-    text: "मरीज़ को पिछले तीन दिन से शाम के समय तेज़ बुखार और सूखी खांसी हो रही है, रात में लेटने पर खांसी बढ़ जाती है।",
-  },
-  {
-    label: "Acidity & reflux",
-    lang: "en",
-    name: "Vikram Nair",
-    age: "38",
-    gender: "Male",
-    vitals: { bp: "118/76", temp: "98.4", pulse: "78", spo2: "99" },
-    text: "Experiencing upper abdominal burning and sour reflux for 4 days, worse after dinner and spicy food.",
-  },
-  {
-    label: "सिरदर्द और चक्कर",
-    lang: "hi",
-    name: "रामेश्वर शर्मा",
-    age: "58",
-    gender: "Male",
-    vitals: { bp: "148/94", temp: "98.6", pulse: "84", spo2: "97" },
-    text: "दो दिन से सिर में दर्द और चक्कर आ रहे हैं, सुबह उठने पर ज़्यादा महसूस होता है।",
-  },
-];
+const SAMPLE_SCENARIO_LIST: SampleScenario[] = SAMPLE_SCENARIOS;
 
 const SPEECH_LOCALE: Record<"hi" | "en", string> = {
   hi: "hi-IN",
@@ -542,7 +507,7 @@ export function PreVisitBay({
                     <span className="text-xs text-muted-foreground">
                       Try a sample:
                     </span>
-                    {SAMPLE_SCENARIOS.map((sample) => (
+                    {SAMPLE_SCENARIO_LIST.map((sample) => (
                       <Button
                         key={sample.label}
                         type="button"

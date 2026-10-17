@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Contributing guide (<15-min PR walkthrough)
+    url: https://github.com/sevasetu/sevasetu/blob/main/CONTRIBUTING.md
+    about: Start here — JSON-only tracks need no TypeScript.
+  - name: Good first issues (seeded tasks)
+    url: https://github.com/sevasetu/sevasetu/blob/main/.github/GOOD_FIRST_ISSUES.md
+    about: Pick a scoped task with acceptance criteria.
