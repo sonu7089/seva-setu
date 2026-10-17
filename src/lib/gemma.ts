@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+import promptCatalogJson from "@/prompts/gemma-prompts.json";
 import {
   DoctorIntakeBrief,
   ExtractedMedication,
@@ -7,8 +10,74 @@ import {
   TextFollowUpQuestion,
 } from "@/types/sevasetu";
 
-const DEFAULT_GOOGLE_MODEL = process.env.GEMMA_MODEL || "gemma-3-27b-it";
+const DEFAULT_GOOGLE_MODEL = process.env.GEMMA_MODEL || "gemma-4-26b-a4b-it";
 const DEFAULT_OLLAMA_MODEL = process.env.OLLAMA_MODEL || "gemma3:12b";
+
+export interface PromptTemplateEntry {
+  id: string;
+  purpose: string;
+  temperature: number;
+  systemInstruction: string;
+  template: string[];
+}
+
+export interface GemmaPromptCatalog {
+  version: string;
+  description: string;
+  defaultModels: {
+    googleAiStudio: string[];
+    ollamaLocal: string;
+  };
+  prompts: {
+    preVisitFollowUps: PromptTemplateEntry;
+    doctorIntakeBrief: PromptTemplateEntry;
+    prescriptionVisionParser: PromptTemplateEntry;
+  };
+}
+
+/**
+ * Loads `src/prompts/gemma-prompts.json` from disk on each call in dev mode so
+ * prompt edits take effect immediately without restarting the server.
+ */
+export function loadGemmaPromptCatalog(): GemmaPromptCatalog {
+  try {
+    const filePath = path.join(
+      process.cwd(),
+      "src",
+      "prompts",
+      "gemma-prompts.json"
+    );
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, "utf-8");
+      return JSON.parse(raw) as GemmaPromptCatalog;
+    }
+  } catch {
+    // Fallback to bundled import if fs read fails
+  }
+  return promptCatalogJson as GemmaPromptCatalog;
+}
+
+/**
+ * Interpolates `{{variable}}` placeholders inside a prompt template array from `src/prompts/gemma-prompts.json`.
+ */
+export function renderPromptFromJson(
+  key: keyof GemmaPromptCatalog["prompts"],
+  variables: Record<string, string>
+): { prompt: string; temperature: number; id: string } {
+  const catalog = loadGemmaPromptCatalog();
+  const entry = catalog.prompts[key];
+  let rendered = entry.template.join("\n");
+
+  for (const [varName, value] of Object.entries(variables)) {
+    rendered = rendered.replaceAll(`{{${varName}}}`, value);
+  }
+
+  return {
+    prompt: rendered.trim(),
+    temperature: entry.temperature,
+    id: entry.id,
+  };
+}
 
 export function getGemmaProviderStatus(): GemmaProviderStatus {
   const googleKey =
@@ -90,15 +159,16 @@ interface GemmaCompletionOptions {
 
 async function callGoogleAiStudio(
   options: GemmaCompletionOptions
-): Promise<string | null> {
+): Promise<{ text: string; modelUsed: string } | null> {
   const apiKey =
     process.env.GOOGLE_API_KEY?.trim() ||
     process.env.GEMINI_API_KEY?.trim() ||
     "";
   if (!apiKey) return null;
 
+  const catalog = loadGemmaPromptCatalog();
   const candidateModels = Array.from(
-    new Set([DEFAULT_GOOGLE_MODEL, "gemma-3-27b-it", "gemini-2.0-flash"])
+    new Set([DEFAULT_GOOGLE_MODEL, ...catalog.defaultModels.googleAiStudio])
   );
 
   for (const model of candidateModels) {
@@ -117,16 +187,22 @@ async function callGoogleAiStudio(
         });
       }
 
+      const isGemma4 = model.startsWith("gemma-4");
+      const generationConfig: Record<string, unknown> = {
+        temperature: options.temperature ?? 0.2,
+        maxOutputTokens: 2048,
+      };
+      if (isGemma4) {
+        generationConfig.thinkingConfig = { thinkingLevel: "MINIMAL" };
+      }
+
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts }],
-          generationConfig: {
-            temperature: options.temperature ?? 0.2,
-            maxOutputTokens: 2048,
-          },
+          generationConfig,
         }),
       });
 
@@ -136,16 +212,23 @@ async function callGoogleAiStudio(
 
       const data = (await response.json()) as {
         candidates?: Array<{
-          content?: { parts?: Array<{ text?: string }> };
+          content?: {
+            parts?: Array<{ text?: string; thought?: boolean }>;
+          };
         }>;
       };
-      const text = data.candidates?.[0]?.content?.parts
-        ?.map((p) => p.text || "")
+      const allParts = data.candidates?.[0]?.content?.parts || [];
+      const nonThoughtParts = allParts.filter((p) => !p.thought);
+      const partsToUse =
+        nonThoughtParts.length > 0 ? nonThoughtParts : allParts;
+
+      const text = partsToUse
+        .map((p) => p.text || "")
         .join("\n")
         .trim();
 
       if (text) {
-        return text;
+        return { text, modelUsed: model };
       }
     } catch {
       continue;
@@ -221,9 +304,9 @@ export async function runGemmaCompletion(
     const googleResponse = await callGoogleAiStudio(options);
     if (googleResponse) {
       return {
-        text: googleResponse,
+        text: googleResponse.text,
         providerUsed: "google_ai_studio",
-        modelName: DEFAULT_GOOGLE_MODEL,
+        modelName: googleResponse.modelUsed,
       };
     }
   }
@@ -377,27 +460,19 @@ export async function generatePreVisitFollowUps(
   questions: TextFollowUpQuestion[];
   providerUsed: GemmaProviderMode;
   modelName: string;
+  promptId: string;
 }> {
-  const prompt = `You are a clinical triage assistant at an Indian outpatient clinic (SevaSetu).
-Analyze the following patient intake recorded at the pre-visit bay and generate 3 targeted, generic preliminary history questions so the doctor does not have to spend consultation time asking baseline questions.
-Do NOT diagnose. Keep questions clear, empathetic, and strictly non-diagnostic (onset/pattern, associated red flags, prior home medications/allergies).
+  const { prompt, temperature, id } = renderPromptFromJson(
+    "preVisitFollowUps",
+    {
+      age: input.patientInfo.age,
+      gender: input.patientInfo.gender,
+      language: input.language,
+      rawTranscript: input.rawTranscript,
+    }
+  );
 
-Patient Age/Gender: ${input.patientInfo.age} / ${input.patientInfo.gender}
-Input Language: ${input.language}
-Raw Transcript: "${input.rawTranscript}"
-
-Return ONLY valid JSON array of 3 objects matching this exact schema:
-[
-  {
-    "id": "fq-1",
-    "questionEn": "English question",
-    "questionHi": "Hindi Devanagari question",
-    "quickOptionsEn": ["Option 1", "Option 2", "Option 3"],
-    "quickOptionsHi": ["विकल्प 1", "विकल्प 2", "विकल्प 3"]
-  }
-]`;
-
-  const completion = await runGemmaCompletion({ prompt, temperature: 0.2 });
+  const completion = await runGemmaCompletion({ prompt, temperature });
   if (completion.text) {
     const parsed = parseJsonSafely<TextFollowUpQuestion[]>(completion.text);
     if (Array.isArray(parsed) && parsed.length > 0) {
@@ -405,6 +480,7 @@ Return ONLY valid JSON array of 3 objects matching this exact schema:
         questions: parsed,
         providerUsed: completion.providerUsed,
         modelName: completion.modelName,
+        promptId: id,
       };
     }
   }
@@ -413,6 +489,7 @@ Return ONLY valid JSON array of 3 objects matching this exact schema:
     questions: buildFallbackFollowUpQuestions(input.rawTranscript),
     providerUsed: "demo_fallback",
     modelName: "gemma-4-27b-it (Resilient Local Fallback)",
+    promptId: id,
   };
 }
 
@@ -423,6 +500,7 @@ export async function generateDoctorIntakeBrief(
   brief: DoctorIntakeBrief;
   providerUsed: GemmaProviderMode;
   modelName: string;
+  promptId: string;
 }> {
   const qaText = followUps
     .map((q) => `- Q: ${q.questionEn}\n  A: ${q.answer || "Not specified"}`)
@@ -440,28 +518,19 @@ export async function generateDoctorIntakeBrief(
         .join(" · ")
     : "Vitals pending at bay";
 
-  const prompt = `You are a clinical scribe generating a 15-second pre-visit decision-support brief for a doctor in an Indian OPD.
-Summarize the patient's initial Hindi/English complaint and their text follow-up answers into a concise clinical brief.
+  const { prompt, temperature, id } = renderPromptFromJson(
+    "doctorIntakeBrief",
+    {
+      patientName: input.patientInfo.name || "Walk-in Patient",
+      age: input.patientInfo.age,
+      gender: input.patientInfo.gender,
+      vitalsFormatted,
+      rawTranscript: input.rawTranscript,
+      qaText,
+    }
+  );
 
-Patient: ${input.patientInfo.name || "Walk-in Patient"} (${input.patientInfo.age}y, ${input.patientInfo.gender})
-Vitals: ${vitalsFormatted}
-Raw Transcript: "${input.rawTranscript}"
-Follow-Up Q&A:
-${qaText}
-
-Return ONLY valid JSON matching this schema:
-{
-  "chiefComplaint": "Concise clinical English summary of chief complaint",
-  "chiefComplaintHi": "Concise Hindi Devanagari summary",
-  "symptomTimeline": ["Bullet 1", "Bullet 2"],
-  "followUpSummary": [{"question": "Short label", "answer": "Patient response"}],
-  "vitalsSummary": "${vitalsFormatted}",
-  "triagePriority": "Routine" | "Priority" | "Urgent",
-  "clinicalNotes": ["Actionable note for doctor consultation"],
-  "timeSavedNote": "3.5 mins of routine baseline history completed at bay"
-}`;
-
-  const completion = await runGemmaCompletion({ prompt, temperature: 0.2 });
+  const completion = await runGemmaCompletion({ prompt, temperature });
   if (completion.text) {
     const parsed = parseJsonSafely<DoctorIntakeBrief>(completion.text);
     if (parsed && parsed.chiefComplaint) {
@@ -469,6 +538,7 @@ Return ONLY valid JSON matching this schema:
         brief: parsed,
         providerUsed: completion.providerUsed,
         modelName: completion.modelName,
+        promptId: id,
       };
     }
   }
@@ -501,6 +571,7 @@ Return ONLY valid JSON matching this schema:
     brief: fallbackBrief,
     providerUsed: "demo_fallback",
     modelName: "gemma-4-27b-it (Resilient Local Fallback)",
+    promptId: id,
   };
 }
 
@@ -514,42 +585,23 @@ export async function parsePrescriptionWithVision(params: {
   clinicName: string;
   providerUsed: GemmaProviderMode;
   modelName: string;
+  promptId: string;
 }> {
-  const prompt = `You are Gemma 4 Multimodal Prescription Analyzer for SevaSetu.
-Extract all prescribed medications from this prescription.
-CRITICAL RULE: If the number of days (duration) for any medicine is missing, cut off, or unclear on the prescription, set "daysOfDosage": null and "isDaysConfirmed": false so the UI prompts the patient manually.
-For every medicine, explain clearly in plain English ("whatIsItUsedForEn") and plain Hindi Devanagari ("whatIsItUsedForHi") what the medicine is used for.
-
-${params.rawTextHint ? `Additional prescription text context: ${params.rawTextHint}` : ""}
-
-Return ONLY valid JSON matching this structure:
-{
-  "doctorName": "Doctor Name",
-  "clinicName": "Clinic Name",
-  "medications": [
+  const { prompt, temperature, id } = renderPromptFromJson(
+    "prescriptionVisionParser",
     {
-      "id": "med-1",
-      "name": "Medicine Name",
-      "dosage": "Strength e.g. 40 mg",
-      "frequencyCode": "OD | BD | TDS | HS | SOS",
-      "frequencyPlain": "Plain schedule e.g. Twice daily (Morning & Night)",
-      "foodRelation": "before_food | after_food | with_food | anytime",
-      "whatIsItUsedForEn": "Plain English explanation of what this medicine treats",
-      "whatIsItUsedForHi": "Plain Hindi explanation in Devanagari",
-      "precautionNote": "Simple practical note for patient",
-      "daysOfDosage": 5,
-      "isDaysConfirmed": true,
-      "recommendedTimes": ["09:00", "21:30"]
+      rawTextHintSection: params.rawTextHint
+        ? `Additional prescription text context: ${params.rawTextHint}`
+        : "",
     }
-  ]
-}`;
+  );
 
   if (params.imageBase64 || params.rawTextHint) {
     const completion = await runGemmaCompletion({
       prompt,
       imageBase64: params.imageBase64,
       mimeType: params.mimeType,
-      temperature: 0.1,
+      temperature,
     });
 
     if (completion.text) {
@@ -567,6 +619,7 @@ Return ONLY valid JSON matching this structure:
           clinicName: parsed.clinicName || "SevaSetu Community Polyclinic",
           providerUsed: completion.providerUsed,
           modelName: completion.modelName,
+          promptId: id,
         };
       }
     }
@@ -577,6 +630,7 @@ Return ONLY valid JSON matching this structure:
     clinicName: "SevaSetu Community Polyclinic",
     providerUsed: "demo_fallback",
     modelName: "gemma-4-27b-it (Resilient Local Fallback)",
+    promptId: id,
     medications: [
       {
         id: "med-rx-1",

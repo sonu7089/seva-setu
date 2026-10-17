@@ -70,10 +70,10 @@ export function Navbar({
         {/* Brand + Logo Slot */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            {/* Dedicated Logo Slot: Drop /public/logo.png or /public/logo.svg anytime */}
+            {/* SevaSetu Brand Logo (/public/logo.png) */}
             <div
-              className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/50 text-xs font-semibold text-primary"
-              title="App Logo Slot (place logo at public/logo.png or public/logo.svg)"
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/80 bg-white p-0.5 shadow-sm"
+              title="SevaSetu (सेवासेतु)"
             >
               {!logoError ? (
                 // eslint-disable-next-line @next/next/no-img-element

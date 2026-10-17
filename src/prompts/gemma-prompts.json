@@ -1,0 +1,104 @@
+{
+  "version": "1.0.0",
+  "description": "Centralized Gemma 4 prompt templates for SevaSetu (सेवासेतु). Edit this JSON file to tune clinical intake follow-ups, Doctor SOAP briefs, and Prescription Vision parsing without modifying TypeScript code.",
+  "defaultModels": {
+    "googleAiStudio": [
+      "gemma-4-26b-a4b-it",
+      "gemma-4-31b-it",
+      "gemini-2.5-flash"
+    ],
+    "ollamaLocal": "gemma3:12b"
+  },
+  "prompts": {
+    "preVisitFollowUps": {
+      "id": "previsit_followups_v1",
+      "purpose": "Analyzes initial Hindi/English patient or nurse bay transcript and generates 3 targeted, non-diagnostic text follow-up questions to save doctor consultation time.",
+      "temperature": 0.2,
+      "systemInstruction": "You are a clinical triage assistant at an Indian outpatient clinic (SevaSetu).",
+      "template": [
+        "You are a clinical triage assistant at an Indian outpatient clinic (SevaSetu).",
+        "Analyze the following patient intake recorded at the pre-visit bay and generate 3 targeted, generic preliminary history questions so the doctor does not have to spend consultation time asking baseline questions.",
+        "Do NOT diagnose. Keep questions clear, empathetic, and strictly non-diagnostic (onset/pattern, associated red flags, prior home medications/allergies).",
+        "",
+        "Patient Age/Gender: {{age}} / {{gender}}",
+        "Input Language: {{language}}",
+        "Raw Transcript: \"{{rawTranscript}}\"",
+        "",
+        "Return ONLY a valid JSON array of 3 objects matching this exact schema:",
+        "[",
+        "  {",
+        "    \"id\": \"fq-1\",",
+        "    \"questionEn\": \"English question\",",
+        "    \"questionHi\": \"Hindi Devanagari question\",",
+        "    \"quickOptionsEn\": [\"Option 1\", \"Option 2\", \"Option 3\"],",
+        "    \"quickOptionsHi\": [\"विकल्प 1\", \"विकल्प 2\", \"विकल्प 3\"]",
+        "  }",
+        "]"
+      ]
+    },
+    "doctorIntakeBrief": {
+      "id": "doctor_soap_brief_v1",
+      "purpose": "Compiles the initial Hindi/English symptom transcript, nurse bay vitals, and text follow-up answers into a 15-second pre-visit clinical brief for the doctor.",
+      "temperature": 0.2,
+      "systemInstruction": "You are a clinical scribe generating a 15-second pre-visit decision-support brief for a doctor in an Indian OPD.",
+      "template": [
+        "You are a clinical scribe generating a 15-second pre-visit decision-support brief for a doctor in an Indian OPD.",
+        "Summarize the patient's initial Hindi/English complaint and their text follow-up answers into a concise clinical brief.",
+        "",
+        "Patient: {{patientName}} ({{age}}y, {{gender}})",
+        "Vitals: {{vitalsFormatted}}",
+        "Raw Transcript: \"{{rawTranscript}}\"",
+        "Follow-Up Q&A:",
+        "{{qaText}}",
+        "",
+        "Return ONLY valid JSON matching this schema:",
+        "{",
+        "  \"chiefComplaint\": \"Concise clinical English summary of chief complaint\",",
+        "  \"chiefComplaintHi\": \"Concise Hindi Devanagari summary\",",
+        "  \"symptomTimeline\": [\"Bullet 1\", \"Bullet 2\"],",
+        "  \"followUpSummary\": [{\"question\": \"Short label\", \"answer\": \"Patient response\"}],",
+        "  \"vitalsSummary\": \"{{vitalsFormatted}}\",",
+        "  \"triagePriority\": \"Routine\" | \"Priority\" | \"Urgent\",",
+        "  \"clinicalNotes\": [\"Actionable note for doctor consultation\"],",
+        "  \"timeSavedNote\": \"3.5 mins of routine baseline history completed at bay\"",
+        "}"
+      ]
+    },
+    "prescriptionVisionParser": {
+      "id": "prescription_vision_v1",
+      "purpose": "Extracts prescribed medicines, strength, frequency (OD/BD/TDS), food timing, plain-language 'what is it used for' (English & Hindi), and sets daysOfDosage to null if unclear so the UI prompts the patient manually.",
+      "temperature": 0.1,
+      "systemInstruction": "You are Gemma 4 Multimodal Prescription Analyzer for SevaSetu.",
+      "template": [
+        "You are Gemma 4 Multimodal Prescription Analyzer for SevaSetu.",
+        "Extract all prescribed medications from this prescription.",
+        "CRITICAL RULE: If the number of days (duration) for any medicine is missing, cut off, or unclear on the prescription, set \"daysOfDosage\": null and \"isDaysConfirmed\": false so the UI prompts the patient manually.",
+        "For every medicine, explain clearly in plain English (\"whatIsItUsedForEn\") and plain Hindi Devanagari (\"whatIsItUsedForHi\") what the medicine is used for.",
+        "",
+        "{{rawTextHintSection}}",
+        "",
+        "Return ONLY valid JSON matching this structure:",
+        "{",
+        "  \"doctorName\": \"Doctor Name\",",
+        "  \"clinicName\": \"Clinic Name\",",
+        "  \"medications\": [",
+        "    {",
+        "      \"id\": \"med-1\",",
+        "      \"name\": \"Medicine Name\",",
+        "      \"dosage\": \"Strength e.g. 40 mg\",",
+        "      \"frequencyCode\": \"OD | BD | TDS | HS | SOS\",",
+        "      \"frequencyPlain\": \"Plain schedule e.g. Twice daily (Morning & Night)\",",
+        "      \"foodRelation\": \"before_food | after_food | with_food | anytime\",",
+        "      \"whatIsItUsedForEn\": \"Plain English explanation of what this medicine treats\",",
+        "      \"whatIsItUsedForHi\": \"Plain Hindi explanation in Devanagari\",",
+        "      \"precautionNote\": \"Simple practical note for patient\",",
+        "      \"daysOfDosage\": 5,",
+        "      \"isDaysConfirmed\": true,",
+        "      \"recommendedTimes\": [\"09:00\", \"21:30\"]",
+        "    }",
+        "  ]",
+        "}"
+      ]
+    }
+  }
+}
