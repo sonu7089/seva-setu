@@ -1,0 +1,74 @@
+# SevaSetu — DigitalOcean App Platform spec (Phase 6)
+#
+# ⚠️ COST WARNING: `basic-xxs` is the cheapest App Platform size (~$5/mo,
+# prorated hourly). It is the ONLY paid resource in this spec — DigitalOcean
+# Serverless Inference (Gemma 4) is pay-per-token (~$0.18/$0.50 per 1M tokens)
+# and costs nothing while idle. Delete the app when not demoing:
+#   doctl apps delete <app-id>
+#
+# Deploy (after connecting DigitalOcean to the GitHub repo once in the
+# console — Apps → Create → GitHub):
+#   doctl apps create --spec .do/app.yaml
+# Validate for free, without deploying anything:
+#   doctl apps spec validate .do/app.yaml
+#
+# Note: App Platform's filesystem is ephemeral, so the SQLite demo database
+# re-seeds on every deploy/restart. That is intentional for the demo build;
+# use a managed database / volume-backed Droplet for durable patient data.
+name: sevasetu
+region: blr
+
+services:
+  - name: web
+    dockerfile_path: Dockerfile
+    source_dir: /
+    github:
+      repo: sonu7089/seva-setu
+      branch: main
+      deploy_on_push: true
+    http_port: 3000
+    instance_count: 1
+    # Cheapest size (~$5/mo). Do not scale up on a small credit balance.
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 15
+      period_seconds: 30
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      - key: NODE_ENV
+        value: production
+        scope: RUN_TIME
+      - key: SEVASETU_DB_PATH
+        value: /app/data/sevasetu.db
+        scope: RUN_TIME
+      # --- DigitalOcean Gradient AI (Serverless Inference, Gemma 4) ---
+      # Create a Model Access Key in the DO console (Gradient AI → Model
+      # Access Keys) and paste it as this SECRET value in the app settings.
+      # Never commit the real key to git.
+      - key: DO_MODEL_ACCESS_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: DO_INFERENCE_MODEL
+        value: gemma-4-31B-it
+        scope: RUN_TIME
+      - key: DO_INFERENCE_BASE_URL
+        value: https://inference.do-ai.run/v1
+        scope: RUN_TIME
+      # --- Optional fallbacks (app still works with none of these set) ---
+      - key: GOOGLE_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: GEMMA_MODEL
+        value: gemma-4-26b-a4b-it
+        scope: RUN_TIME
+      # Gradient Agent endpoint, e.g. https://<agent>.agents.do-ai.run
+      - key: DO_GENAI_ENDPOINT
+        scope: RUN_TIME
+      # Self-hosted Gemma 4 on a GPU Droplet (OpenAI-compatible), optional.
+      - key: DO_GPU_DROPLET_URL
+        scope: RUN_TIME

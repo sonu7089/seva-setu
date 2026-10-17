@@ -18,6 +18,68 @@ import {
 
 const DEFAULT_GOOGLE_MODEL = process.env.GEMMA_MODEL || "gemma-4-26b-a4b-it";
 const DEFAULT_OLLAMA_MODEL = process.env.OLLAMA_MODEL || "gemma3:12b";
+// Verified live on DigitalOcean Serverless Inference (Oct 2026): Gemma 4,
+// text+image input. ~$0.18/$0.50 per 1M tokens — a full intake costs < $0.001.
+const DEFAULT_DO_MODEL = process.env.DO_INFERENCE_MODEL || "gemma-4-31B-it";
+const DEFAULT_DO_BASE_URL = "https://inference.do-ai.run/v1";
+
+function envFirst(...names: string[]): string {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+/** Host (`scheme://host`) of a configured URL, or null. Never leaks keys/paths. */
+function urlHost(raw: string): string | null {
+  if (!raw) return null;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return null;
+  }
+}
+
+interface DigitalOceanConfig {
+  inferenceApiKey: string;
+  inferenceBaseUrl: string;
+  inferenceModel: string;
+  agentEndpoint: string;
+  agentApiKey: string;
+  agentModel: string;
+  gpuDropletUrl: string;
+  gpuApiKey: string;
+  gpuModel: string;
+}
+
+function getDigitalOceanConfig(): DigitalOceanConfig {
+  const inferenceApiKey = envFirst(
+    "DO_MODEL_ACCESS_KEY",
+    "DO_INFERENCE_API_KEY",
+    "DIGITALOCEAN_MODEL_ACCESS_KEY",
+    "DO_API_TOKEN",
+    "DIGITALOCEAN_API_TOKEN"
+  );
+  return {
+    inferenceApiKey,
+    inferenceBaseUrl: (
+      envFirst("DO_INFERENCE_BASE_URL", "DO_GENAI_BASE_URL") ||
+      DEFAULT_DO_BASE_URL
+    ).replace(/\/+$/, ""),
+    inferenceModel: DEFAULT_DO_MODEL,
+    agentEndpoint: envFirst("DO_GENAI_ENDPOINT", "DO_AGENT_ENDPOINT").replace(
+      /\/+$/,
+      ""
+    ),
+    agentApiKey:
+      envFirst("DO_GENAI_API_KEY", "DO_AGENT_API_KEY") || inferenceApiKey,
+    agentModel: envFirst("DO_GENAI_MODEL", "DO_AGENT_MODEL") || DEFAULT_DO_MODEL,
+    gpuDropletUrl: envFirst("DO_GPU_DROPLET_URL").replace(/\/+$/, ""),
+    gpuApiKey: envFirst("DO_GPU_API_KEY"),
+    gpuModel: envFirst("DO_GPU_MODEL") || DEFAULT_OLLAMA_MODEL,
+  };
+}
 
 export interface PromptTemplateEntry {
   id: string;
@@ -87,47 +149,57 @@ export function renderPromptFromJson(
 }
 
 export function getGemmaProviderStatus(): GemmaProviderStatus {
-  const googleKey =
-    process.env.GOOGLE_API_KEY?.trim() ||
-    process.env.GEMINI_API_KEY?.trim() ||
-    "";
-  const ollamaUrl =
-    process.env.OLLAMA_BASE_URL?.trim() ||
-    process.env.LOCAL_LLM_BASE_URL?.trim() ||
-    "";
+  const googleKey = envFirst("GOOGLE_API_KEY", "GEMINI_API_KEY");
+  const ollamaUrl = envFirst("OLLAMA_BASE_URL", "LOCAL_LLM_BASE_URL");
+  const doCfg = getDigitalOceanConfig();
 
-  if (googleKey.length > 0) {
-    return {
-      activeProvider: "google_ai_studio",
-      modelName: DEFAULT_GOOGLE_MODEL,
-      googleApiKeyConfigured: true,
-      ollamaEndpointConfigured: ollamaUrl.length > 0,
-      ollamaBaseUrl: ollamaUrl || null,
-      visionSupported: true,
-      bilingualSupported: true,
-      fallbackReady: true,
-    };
-  }
+  const digitalOcean = {
+    serverlessInferenceConfigured: doCfg.inferenceApiKey.length > 0,
+    inferenceModel: doCfg.inferenceModel,
+    inferenceHost: doCfg.inferenceApiKey
+      ? urlHost(doCfg.inferenceBaseUrl)
+      : null,
+    agentConfigured: doCfg.agentEndpoint.length > 0,
+    agentHost: urlHost(doCfg.agentEndpoint),
+    gpuDropletConfigured: doCfg.gpuDropletUrl.length > 0,
+    gpuDropletHost: urlHost(doCfg.gpuDropletUrl),
+    anyConfigured: false,
+  };
+  digitalOcean.anyConfigured =
+    digitalOcean.serverlessInferenceConfigured ||
+    digitalOcean.agentConfigured ||
+    digitalOcean.gpuDropletConfigured;
 
-  if (ollamaUrl.length > 0) {
-    return {
-      activeProvider: "ollama_local",
-      modelName: DEFAULT_OLLAMA_MODEL,
-      googleApiKeyConfigured: false,
-      ollamaEndpointConfigured: true,
-      ollamaBaseUrl: ollamaUrl,
-      visionSupported: true,
-      bilingualSupported: true,
-      fallbackReady: true,
-    };
-  }
+  // Fallback chain: DigitalOcean Gradient AI → Google AI Studio → Local
+  // Ollama → Resilient Offline Fallback (always available, zero cost).
+  const fallbackChain: GemmaProviderStatus["fallbackChain"] = [];
+  if (digitalOcean.anyConfigured) fallbackChain.push("digitalocean_gradient");
+  if (googleKey) fallbackChain.push("google_ai_studio");
+  if (ollamaUrl) fallbackChain.push("ollama_local");
+  fallbackChain.push("demo_fallback");
+
+  const activeProvider = fallbackChain[0];
+  const modelName =
+    activeProvider === "digitalocean_gradient"
+      ? digitalOcean.serverlessInferenceConfigured
+        ? doCfg.inferenceModel
+        : digitalOcean.agentConfigured
+          ? `${doCfg.agentModel} (Gradient Agent)`
+          : `${doCfg.gpuModel} (GPU Droplet)`
+      : activeProvider === "google_ai_studio"
+        ? DEFAULT_GOOGLE_MODEL
+        : activeProvider === "ollama_local"
+          ? DEFAULT_OLLAMA_MODEL
+          : "gemma-4-27b-it (Resilient Local Fallback)";
 
   return {
-    activeProvider: "demo_fallback",
-    modelName: "gemma-4-27b-it (Resilient Local Fallback)",
-    googleApiKeyConfigured: false,
-    ollamaEndpointConfigured: false,
-    ollamaBaseUrl: null,
+    activeProvider,
+    modelName,
+    googleApiKeyConfigured: googleKey.length > 0,
+    ollamaEndpointConfigured: ollamaUrl.length > 0,
+    ollamaBaseUrl: ollamaUrl || null,
+    digitalOcean,
+    fallbackChain,
     visionSupported: true,
     bilingualSupported: true,
     fallbackReady: true,
@@ -246,24 +318,16 @@ async function callGoogleAiStudio(
   return null;
 }
 
-async function callOllamaEndpoint(
-  options: GemmaCompletionOptions
-): Promise<string | null> {
-  const baseUrl = (
-    process.env.OLLAMA_BASE_URL ||
-    process.env.LOCAL_LLM_BASE_URL ||
-    ""
-  )
-    .trim()
-    .replace(/\/+$/, "");
-
-  if (!baseUrl) return null;
-
+/** Shared OpenAI-compatible `/chat/completions` caller (DO, Ollama, GPU Droplets). */
+async function callOpenAiCompatible(params: {
+  endpoint: string;
+  model: string;
+  apiKey?: string;
+  options: GemmaCompletionOptions;
+  timeoutMs?: number;
+}): Promise<string | null> {
+  const { options } = params;
   try {
-    const endpoint = baseUrl.endsWith("/v1")
-      ? `${baseUrl}/chat/completions`
-      : `${baseUrl}/v1/chat/completions`;
-
     const content: unknown = options.imageBase64
       ? [
           { type: "text", text: options.prompt },
@@ -278,11 +342,17 @@ async function callOllamaEndpoint(
         ]
       : options.prompt;
 
-    const response = await fetch(endpoint, {
+    const response = await fetch(params.endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(params.timeoutMs ?? 60_000),
+      headers: {
+        "Content-Type": "application/json",
+        ...(params.apiKey
+          ? { Authorization: `Bearer ${params.apiKey}` }
+          : {}),
+      },
       body: JSON.stringify({
-        model: DEFAULT_OLLAMA_MODEL,
+        model: params.model,
         messages: [{ role: "user", content }],
         temperature: options.temperature ?? 0.2,
         max_tokens: options.maxOutputTokens,
@@ -300,6 +370,72 @@ async function callOllamaEndpoint(
   }
 }
 
+function chatCompletionsUrl(baseUrl: string): string {
+  if (baseUrl.endsWith("/chat/completions")) return baseUrl;
+  return baseUrl.endsWith("/v1")
+    ? `${baseUrl}/chat/completions`
+    : `${baseUrl}/v1/chat/completions`;
+}
+
+/** DigitalOcean Gradient™ AI — Serverless Inference, Agent, then GPU Droplet. */
+async function callDigitalOcean(
+  options: GemmaCompletionOptions
+): Promise<{ text: string; modelUsed: string } | null> {
+  const cfg = getDigitalOceanConfig();
+
+  if (cfg.inferenceApiKey) {
+    const text = await callOpenAiCompatible({
+      endpoint: chatCompletionsUrl(cfg.inferenceBaseUrl),
+      model: cfg.inferenceModel,
+      apiKey: cfg.inferenceApiKey,
+      options,
+    });
+    if (text) return { text, modelUsed: cfg.inferenceModel };
+  }
+
+  if (cfg.agentEndpoint) {
+    // Agent endpoints are OpenAI-compatible under /api/v1/chat/completions;
+    // accept a full chat-completions URL too.
+    const endpoint = cfg.agentEndpoint.endsWith("/chat/completions")
+      ? cfg.agentEndpoint
+      : `${cfg.agentEndpoint}/api/v1/chat/completions`;
+    const text = await callOpenAiCompatible({
+      endpoint,
+      model: cfg.agentModel,
+      apiKey: cfg.agentApiKey || undefined,
+      options,
+    });
+    if (text) return { text, modelUsed: `${cfg.agentModel} (Gradient Agent)` };
+  }
+
+  if (cfg.gpuDropletUrl) {
+    const text = await callOpenAiCompatible({
+      endpoint: chatCompletionsUrl(cfg.gpuDropletUrl),
+      model: cfg.gpuModel,
+      apiKey: cfg.gpuApiKey || undefined,
+      options,
+    });
+    if (text) return { text, modelUsed: `${cfg.gpuModel} (GPU Droplet)` };
+  }
+
+  return null;
+}
+
+async function callOllamaEndpoint(
+  options: GemmaCompletionOptions
+): Promise<string | null> {
+  const baseUrl = envFirst("OLLAMA_BASE_URL", "LOCAL_LLM_BASE_URL").replace(
+    /\/+$/,
+    ""
+  );
+  if (!baseUrl) return null;
+  return callOpenAiCompatible({
+    endpoint: chatCompletionsUrl(baseUrl),
+    model: DEFAULT_OLLAMA_MODEL,
+    options,
+  });
+}
+
 export async function runGemmaCompletion(
   options: GemmaCompletionOptions
 ): Promise<{
@@ -309,6 +445,19 @@ export async function runGemmaCompletion(
 }> {
   const status = getGemmaProviderStatus();
 
+  // 1. DigitalOcean Gradient AI (Serverless Inference / Agent / GPU Droplet)
+  if (status.digitalOcean.anyConfigured) {
+    const doResponse = await callDigitalOcean(options);
+    if (doResponse) {
+      return {
+        text: doResponse.text,
+        providerUsed: "digitalocean_gradient",
+        modelName: doResponse.modelUsed,
+      };
+    }
+  }
+
+  // 2. Google AI Studio
   if (status.googleApiKeyConfigured) {
     const googleResponse = await callGoogleAiStudio(options);
     if (googleResponse) {
@@ -320,6 +469,7 @@ export async function runGemmaCompletion(
     }
   }
 
+  // 3. Local Ollama / OpenAI-compatible endpoint
   if (status.ollamaEndpointConfigured) {
     const ollamaResponse = await callOllamaEndpoint(options);
     if (ollamaResponse) {
@@ -331,6 +481,7 @@ export async function runGemmaCompletion(
     }
   }
 
+  // 4. Resilient offline fallback (callers substitute demo data)
   return {
     text: null,
     providerUsed: "demo_fallback",
@@ -775,7 +926,7 @@ export async function explainUnknownMedicines(
   if (unknownIdx.length === 0) return medications;
 
   const status = getGemmaProviderStatus();
-  if (!status.googleApiKeyConfigured && !status.ollamaEndpointConfigured) {
+  if (status.activeProvider === "demo_fallback") {
     return medications;
   }
 

@@ -46,10 +46,16 @@ npm run dev                  # open http://localhost:3000
 
 | Variable | Purpose | Without it |
 |---|---|---|
+| `DO_MODEL_ACCESS_KEY` | **Phase 6:** Gemma 4 (`gemma-4-31B-it`) via DigitalOcean Gradient™ Serverless Inference | Falls through to the next provider |
+| `DO_INFERENCE_MODEL` / `DO_INFERENCE_BASE_URL` | DO inference model / endpoint (defaults shown in `.env.example`) | Defaults are used |
+| `DO_GENAI_ENDPOINT` | Optional Gradient Agent endpoint | Skipped |
+| `DO_GPU_DROPLET_URL` / `DO_GPU_MODEL` | Optional self-hosted Gemma 4 on a GPU Droplet | Skipped |
 | `GOOGLE_API_KEY` | Live Gemma 4 text + vision via Google AI Studio | Built-in resilient demo fallbacks (full flow still works) |
 | `GEMMA_MODEL` | Model name (default `gemma-4-26b-a4b-it`) | Default is used |
 | `OLLAMA_BASE_URL` / `OLLAMA_MODEL` | Local Ollama / OpenAI-compatible endpoint alternative | Skipped |
 | `SEVASETU_DB_PATH` | Custom SQLite file path (default `./data/sevasetu.db`) | Default is used |
+
+Provider fallback chain: **DigitalOcean Gradient AI → Google AI Studio → Local Ollama → Resilient Offline Fallback**.
 
 ---
 
@@ -107,6 +113,7 @@ src/
       prescriptions[/[id]]       # save / confirm-days / edit medicines
       system/status             # diagnostics drawer payload
       system/demo-flow          # POST: stages the 60-sec golden-path demo
+      health                    # readiness probe (SQLite WAL + AI providers)
   components/
     PreVisitBay.tsx             # bay intake (voice/text, HI/EN, validation)
     DoctorConsole.tsx           # live queue + brief + mark-as-seen
@@ -120,7 +127,7 @@ src/
     sample-prescriptions/       #   anonymized sample Rxs for vision testing
   lib/
     db.ts                       # SQLite schema, auto-seed, all queries
-    gemma.ts                    # multi-provider adapter (Google / Ollama / fallback)
+    gemma.ts                    # multi-provider adapter (DO Gradient / Google / Ollama / fallback)
     google-calendar.ts          # live OAuth sync (optional)
     calendar-utils.ts           # meal-aligned slots, event building, .ics
     prescription-utils.ts       # normalization, days validation
@@ -129,6 +136,15 @@ src/
   types/sevasetu.ts             # shared TypeScript contracts
 public/samples/                 # sample prescription images for instant demos
 ```
+
+---
+
+## Deploy on DigitalOcean (Phase 6)
+
+- **AI:** DigitalOcean Gradient™ Serverless Inference serves Gemma 4 (`gemma-4-31B-it`, text + prescription vision) — set `DO_MODEL_ACCESS_KEY`; no GPU to manage, pay-per-token only.
+- **App:** one-command App Platform deploy from [`.do/app.yaml`](.do/app.yaml) (Bangalore `blr`, cheapest `basic-xxs`), built from the multi-stage [`Dockerfile`](Dockerfile) (Next.js standalone + `better-sqlite3`). Readiness is probed at `/api/health` (SQLite WAL + provider status, no inference spend).
+- **Validate for free before spending anything:** `doctl apps spec validate .do/app.yaml` and `docker build -t sevasetu .`
+- ⚠️ **Cost caution:** `basic-xxs` is ~$5/month prorated — delete the app (`doctl apps delete <id>`) after demoing on a small balance. App Platform storage is ephemeral, so the SQLite demo DB re-seeds on restart; that's by design for the demo.
 
 ---
 

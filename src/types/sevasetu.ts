@@ -127,9 +127,26 @@ export interface CalendarSyncPayload {
 }
 
 export type GemmaProviderMode =
+  | "digitalocean_gradient"
   | "google_ai_studio"
   | "ollama_local"
   | "demo_fallback";
+
+/** DigitalOcean Gradient™ AI surfaces. Hosts only — never contains secrets. */
+export interface DigitalOceanProviderStatus {
+  /** Serverless Inference at inference.do-ai.run (OpenAI-compatible). */
+  serverlessInferenceConfigured: boolean;
+  inferenceModel: string;
+  inferenceHost: string | null;
+  /** Gradient Agent endpoint (`DO_GENAI_ENDPOINT`). */
+  agentConfigured: boolean;
+  agentHost: string | null;
+  /** Self-hosted Gemma 4 on a GPU Droplet (`DO_GPU_DROPLET_URL`). */
+  gpuDropletConfigured: boolean;
+  gpuDropletHost: string | null;
+  /** True when any DigitalOcean surface above is configured. */
+  anyConfigured: boolean;
+}
 
 export interface GemmaProviderStatus {
   activeProvider: GemmaProviderMode;
@@ -137,6 +154,9 @@ export interface GemmaProviderStatus {
   googleApiKeyConfigured: boolean;
   ollamaEndpointConfigured: boolean;
   ollamaBaseUrl: string | null;
+  digitalOcean: DigitalOceanProviderStatus;
+  /** Ordered providers that will be tried, always ending in `demo_fallback`. */
+  fallbackChain: GemmaProviderMode[];
   visionSupported: boolean;
   bilingualSupported: boolean;
   fallbackReady: boolean;

@@ -1,7 +1,7 @@
 # SevaSetu (सेवासेतु) — Phased Implementation Plan
 
-> **Architecture:** Next.js (App Router) + TypeScript + Tailwind CSS + SQLite (`better-sqlite3`) + Gemma 4 API + Web Speech API + Google Calendar API  
-> **Goal:** Build a rock-solid, demo-ready, open-source healthcare application for Hacktoberfest 2026 in 5 structured phases.
+> **Architecture:** Next.js (App Router) + TypeScript + Tailwind CSS + SQLite (`better-sqlite3`) + Gemma 4 API + DigitalOcean Gradient™ AI & App Platform + Web Speech API + Google Calendar API  
+> **Goal:** Build a rock-solid, demo-ready, open-source healthcare application for Hacktoberfest 2026 in 6 structured phases.
 
 ---
 
@@ -96,3 +96,19 @@
    * Step-by-step instructions for fellow Hacktoberfest participants to submit PRs in under 15 minutes.
 3. **End-to-End Verification & Demo Polish:**
    * Pre-seeded SQLite demo data + 1-click **"Load Live Demo Flow"** button covering a full Hindi/English Bay Intake → Doctor Brief → Prescription Scan (with missing dosage days prompt) → Google Calendar Replacement.
+
+---
+
+## Phase 6: DigitalOcean Gradient™ AI & App Platform Cloud Integration
+**Objective:** Integrate DigitalOcean Gradient™ AI (Serverless Inference / Agent / GPU Droplet) as a first-class AI provider for SevaSetu and make the application one-click deployable on DigitalOcean App Platform.
+
+### Deliverables:
+1. **DigitalOcean Gradient™ AI & GPU Droplet Adapter (`src/lib/gemma.ts` & `src/types/sevasetu.ts`):**
+   * Adds `digitalocean_gradient` provider mode supporting DigitalOcean Serverless Inference (`https://inference.do-ai.run/v1/chat/completions`), DigitalOcean Gradient Agent endpoints (`DO_GENAI_ENDPOINT`), and DigitalOcean GPU Droplets running Gemma 4 (`DO_GPU_DROPLET_URL`).
+   * Automatic multi-provider fallback chain (`DigitalOcean Gradient AI` → `Google AI Studio` → `Local Ollama` → `Resilient Offline Fallback`).
+2. **DigitalOcean Diagnostics & Status UI (`src/components/Navbar.tsx` & `src/components/SevaSetuWorkspace.tsx`):**
+   * Live provider badge in the Navbar and DigitalOcean cloud/inference telemetry in the system diagnostics drawer.
+3. **DigitalOcean App Platform Spec & Containerization (`.do/app.yaml`, `Dockerfile`, `/api/health`):**
+   * `/api/health` readiness endpoint verifying SQLite WAL health and AI provider status for DigitalOcean App Platform probes.
+   * Multi-stage Next.js standalone `Dockerfile` with `better-sqlite3` native support, `.dockerignore`, and `.do/app.yaml` specification for 1-click DigitalOcean deployment.
+

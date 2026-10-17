@@ -192,11 +192,13 @@ export function Navbar({
             <span>SQLite WAL</span>
             <span className="text-border">·</span>
             <span className="text-foreground">
-              {gemmaStatus?.activeProvider === "google_ai_studio"
-                ? "Gemma 4 API"
-                : gemmaStatus?.activeProvider === "ollama_local"
-                  ? "Gemma 4 Ollama"
-                  : "Gemma 4 Ready"}
+              {gemmaStatus?.activeProvider === "digitalocean_gradient"
+                ? "DO Gradient · Gemma 4"
+                : gemmaStatus?.activeProvider === "google_ai_studio"
+                  ? "Gemma 4 API"
+                  : gemmaStatus?.activeProvider === "ollama_local"
+                    ? "Gemma 4 Ollama"
+                    : "Gemma 4 Ready"}
             </span>
             <span
               className={cn(

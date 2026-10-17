@@ -161,11 +161,12 @@ export function SevaSetuWorkspace({
             <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
               <div>
                 <h2 className="text-sm font-semibold text-foreground">
-                  Phase 1 Foundation — SQLite Persistence &amp; Gemma 4 Engine
+                  System Diagnostics — SQLite, Gemma 4 &amp; DigitalOcean
+                  Gradient™ AI
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Zero-migration SQLite database and multi-provider Gemma 4
-                  adapter status
+                  Zero-migration SQLite database, multi-provider Gemma 4
+                  adapter, and DigitalOcean cloud / inference status
                 </p>
               </div>
               <Button
@@ -229,11 +230,13 @@ export function SevaSetuWorkspace({
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Gemma 4 Provider</span>
                   <Badge variant="outline">
-                    {gemmaStatus.activeProvider === "google_ai_studio"
-                      ? "Google AI Studio"
-                      : gemmaStatus.activeProvider === "ollama_local"
-                        ? "Ollama Local"
-                        : "Fallback Ready"}
+                    {gemmaStatus.activeProvider === "digitalocean_gradient"
+                      ? "DigitalOcean Gradient"
+                      : gemmaStatus.activeProvider === "google_ai_studio"
+                        ? "Google AI Studio"
+                        : gemmaStatus.activeProvider === "ollama_local"
+                          ? "Ollama Local"
+                          : "Fallback Ready"}
                   </Badge>
                 </div>
                 <p className="mt-1.5 truncate text-xs font-medium text-foreground">
@@ -258,6 +261,79 @@ export function SevaSetuWorkspace({
                   {dbStats.tables.calendarEventsActive} active ·{" "}
                   {dbStats.tables.calendarEventsRemoved} replaced
                 </p>
+              </div>
+            </div>
+
+            {/* Phase 6 — DigitalOcean Gradient AI telemetry (hosts only, no secrets) */}
+            <div className="mt-3 rounded-md border p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>DigitalOcean Gradient™ AI &amp; App Platform</span>
+                <Badge
+                  variant={
+                    gemmaStatus.digitalOcean?.anyConfigured
+                      ? "success"
+                      : "outline"
+                  }
+                >
+                  {gemmaStatus.digitalOcean?.anyConfigured
+                    ? "Connected"
+                    : "Not configured — offline fallback active"}
+                </Badge>
+              </div>
+              <div className="mt-2 grid gap-2 text-xs sm:grid-cols-3">
+                <div>
+                  <p className="text-muted-foreground">Serverless Inference</p>
+                  <p className="mt-0.5 truncate font-medium text-foreground">
+                    {gemmaStatus.digitalOcean?.serverlessInferenceConfigured
+                      ? `${gemmaStatus.digitalOcean.inferenceModel} · ${gemmaStatus.digitalOcean.inferenceHost ?? "inference.do-ai.run"}`
+                      : "Set DO_MODEL_ACCESS_KEY"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Gradient Agent</p>
+                  <p className="mt-0.5 truncate font-medium text-foreground">
+                    {gemmaStatus.digitalOcean?.agentConfigured
+                      ? (gemmaStatus.digitalOcean.agentHost ?? "Configured")
+                      : "Set DO_GENAI_ENDPOINT (optional)"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">GPU Droplet</p>
+                  <p className="mt-0.5 truncate font-medium text-foreground">
+                    {gemmaStatus.digitalOcean?.gpuDropletConfigured
+                      ? (gemmaStatus.digitalOcean.gpuDropletHost ??
+                        "Configured")
+                      : "Set DO_GPU_DROPLET_URL (optional)"}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span>Fallback chain:</span>
+                {(gemmaStatus.fallbackChain ?? ["demo_fallback"]).map(
+                  (provider, i, chain) => (
+                    <span key={provider} className="flex items-center gap-1.5">
+                      <span
+                        className={
+                          provider === gemmaStatus.activeProvider
+                            ? "font-semibold text-foreground"
+                            : undefined
+                        }
+                      >
+                        {provider === "digitalocean_gradient"
+                          ? "DigitalOcean Gradient"
+                          : provider === "google_ai_studio"
+                            ? "Google AI Studio"
+                            : provider === "ollama_local"
+                              ? "Ollama"
+                              : "Offline Fallback"}
+                      </span>
+                      {i < chain.length - 1 && <span aria-hidden>→</span>}
+                    </span>
+                  )
+                )}
+                <span className="ml-2 font-mono text-primary">
+                  /api/health
+                </span>
               </div>
             </div>
           </div>
@@ -405,7 +481,7 @@ export function SevaSetuWorkspace({
               SevaSetu (सेवासेतु)
             </span>
             <span>·</span>
-            <span>Phase 5 · Demo Ready & Open Source</span>
+            <span>Phase 6 · DigitalOcean Gradient AI &amp; App Platform Ready</span>
           </div>
           <div className="flex items-center gap-4 tabular-nums">
             <span>SQLite: data/sevasetu.db ({dbStats.tables.visits} visits)</span>
