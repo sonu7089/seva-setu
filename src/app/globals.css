@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98.5%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 173 80% 26%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 95%;
+    --secondary-foreground: 222 47% 15%;
+    --muted: 210 20% 95.5%;
+    --muted-foreground: 215 16% 44%;
+    --accent: 210 20% 94%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 22% 90%;
+    --input: 214 22% 88%;
+    --ring: 173 80% 26%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/15 selection:text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Clean bilingual Devanagari + English line rhythm */
+.text-bilingual {
+  line-height: 1.65;
+}
