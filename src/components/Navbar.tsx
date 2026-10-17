@@ -62,7 +62,7 @@ export function Navbar({
   onToggleDiagnostics,
   diagnosticsOpen,
 }: NavbarProps) {
-  const [logoError, setLogoError] = React.useState(true);
+  const [logoError, setLogoError] = React.useState(false);
 
   return (
     <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
